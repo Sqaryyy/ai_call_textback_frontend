@@ -59,7 +59,7 @@ export default function VoxioDeskHero() {
               <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-[3rem] blur-3xl opacity-20"></div>
               <div className="relative z-10">
                 <img
-                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 600'%3E%3Crect width='300' height='600' rx='40' fill='%23111827'/%3E%3Crect x='10' y='10' width='280' height='580' rx='35' fill='white'/%3E%3C/svg%3E"
+                  src="/iphone-mockup.png"
                   alt="iPhone mockup placeholder"
                   className="w-full drop-shadow-2xl"
                 />
