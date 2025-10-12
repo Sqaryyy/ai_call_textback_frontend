@@ -11,7 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1/demo";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 interface Message {
   role: "customer" | "assistant" | "error";
@@ -108,7 +108,7 @@ export default function AIDemoChat() {
 
   const fetchBusinessData = async (sid: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/business/${sid}`);
+      const response = await fetch(`${API_BASE_URL}/demo/business/${sid}`);
       if (response.ok) {
         const data = await response.json();
         setBusinessData(data);
@@ -123,7 +123,7 @@ export default function AIDemoChat() {
     setAnimationPhase("calling");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/start`, {
+      const response = await fetch(`${API_BASE_URL}/demo/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ business_id: businessId }),
@@ -178,7 +178,7 @@ export default function AIDemoChat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/message`, {
+      const response = await fetch(`${API_BASE_URL}/demo/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
