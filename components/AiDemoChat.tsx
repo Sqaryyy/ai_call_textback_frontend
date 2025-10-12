@@ -11,7 +11,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:8000/api/v1/demo";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1/demo";
 
 interface Message {
   role: "customer" | "assistant" | "error";
