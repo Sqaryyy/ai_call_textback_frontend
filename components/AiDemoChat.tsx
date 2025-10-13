@@ -60,7 +60,7 @@ type AnimationPhase = "idle" | "calling" | "missed" | "sms";
 
 export default function AIDemoChat() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [businessId] = useState<string>("055e2117-c1f3-454b-ab95-e8e02aa3bbad");
+  const [businessId] = useState<string>("f93cb51c-3066-4f1f-a031-cc94a9fe449e");
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -108,7 +108,7 @@ export default function AIDemoChat() {
 
   const fetchBusinessData = async (sid: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/demo/business/${sid}`);
+      const response = await fetch(`${API_BASE_URL}/business/${sid}`);
       if (response.ok) {
         const data = await response.json();
         setBusinessData(data);
