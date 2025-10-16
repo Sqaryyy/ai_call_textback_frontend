@@ -208,9 +208,15 @@ export default function HowItWorksSection() {
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
               }}
               whileTap={{ scale: 0.98 }}
+              onClick={() =>
+                window.open(
+                  "https://calendly.com/lukapilip/discovery-call",
+                  "_blank"
+                )
+              }
               className="px-8 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-900 transition-colors"
             >
-              Get Started Free
+              Get Started
             </motion.button>
           </motion.div>
         </motion.div>

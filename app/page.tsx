@@ -1,5 +1,5 @@
 import FAQSection from "@/components/FAQ";
-import FinalCTAAndFooter from "@/components/FinalCTAandFooter";
+import FinalCTAAndFooter from "@/components/Footer";
 import VoxioDeskHero from "@/components/HeroSection";
 import HowItWorksSection from "@/components/HowItWorks";
 import VoxioDeskProblem from "@/components/ProblemStatementSection";

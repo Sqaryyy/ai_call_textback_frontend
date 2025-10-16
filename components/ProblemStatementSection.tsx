@@ -167,6 +167,12 @@ export default function VoxioDeskProblem() {
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
             }}
             whileTap={{ scale: 0.98 }}
+            onClick={() =>
+              window.open(
+                "https://calendly.com/lukapilip/discovery-call",
+                "_blank"
+              )
+            }
             className="px-8 py-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
           >
             Start Converting Missed Calls Today

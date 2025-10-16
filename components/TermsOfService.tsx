@@ -1,4 +1,3 @@
-// components/TermsOfService.tsx
 "use client";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
@@ -59,36 +58,32 @@ export const TermsOfService = () => {
               {/* Section 2 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  2. Use License
+                  2. Service Description
                 </h3>
                 <p className="text-gray-600 mb-4 leading-relaxed">
-                  Permission is granted to temporarily access the materials
-                  (information and content) on the Service for personal,
-                  non-commercial transitory viewing only. This is the grant of a
-                  license, not a transfer of title, and under this license you
-                  may not:
+                  VoxioDesk is an automated SMS appointment booking service. The
+                  Service operates as follows:
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
-                  <li>Modify or copy the materials</li>
                   <li>
-                    Use the materials for any commercial purpose or for any
-                    public display
+                    VoxioDesk automatically responds to missed calls by sending
+                    SMS messages to your customers on your behalf
                   </li>
                   <li>
-                    Attempt to decompile or reverse engineer any software
-                    contained on the Service
+                    All SMS content, messaging templates, and automation
+                    workflows are configured and controlled by VoxioDesk
                   </li>
                   <li>
-                    Remove any copyright or other proprietary notations from the
-                    materials
+                    You grant VoxioDesk permission to send automated messages to
+                    your customers using your business information
                   </li>
                   <li>
-                    Transfer the materials to another person or "mirror" the
-                    materials on any other server
+                    The Service integrates with your Google Calendar to check
+                    availability and book appointments automatically
                   </li>
                   <li>
-                    Attempt to gain unauthorized access to any portion or
-                    feature of the Service
+                    You do not have direct control over the specific content of
+                    individual messages sent to customers
                   </li>
                 </ul>
               </section>
@@ -96,121 +91,202 @@ export const TermsOfService = () => {
               {/* Section 3 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  3. Disclaimer
+                  3. Your Responsibilities
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  The materials on the Service are provided on an 'as is' basis.
-                  The Service makes no warranties, expressed or implied, and
-                  hereby disclaims and negates all other warranties including,
-                  without limitation, implied warranties or conditions of
-                  merchantability, fitness for a particular purpose, or
-                  non-infringement of intellectual property or other violation
-                  of rights.
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  By using the Service, you acknowledge and agree that:
                 </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>
+                    You authorize VoxioDesk to send SMS messages to your
+                    customers on your behalf
+                  </li>
+                  <li>
+                    You are responsible for ensuring your customers have
+                    consented to receive SMS communications from your business
+                  </li>
+                  <li>
+                    You will comply with all applicable SMS marketing and
+                    communication laws (including TCPA, CAN-SPAM, and similar
+                    regulations)
+                  </li>
+                  <li>
+                    You provide accurate business information for use in
+                    automated messages
+                  </li>
+                  <li>
+                    You maintain an accurate and up-to-date calendar to prevent
+                    scheduling conflicts
+                  </li>
+                  <li>
+                    You are responsible for honoring all appointments booked
+                    through the Service
+                  </li>
+                </ul>
               </section>
 
               {/* Section 4 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  4. Limitations
+                  4. Use License
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  In no event shall the Service or its suppliers be liable for
-                  any damages (including, without limitation, damages for loss
-                  of data or profit, or due to business interruption) arising
-                  out of the use or inability to use the materials on the
-                  Service, even if the Service or an authorized representative
-                  has been notified orally or in writing of the possibility of
-                  such damage.
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  Permission is granted to use the Service for your business
+                  appointment booking needs. Under this license you may not:
                 </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>
+                    Modify or attempt to modify the Service's messaging system
+                  </li>
+                  <li>
+                    Use the Service for any unlawful or fraudulent purpose
+                  </li>
+                  <li>
+                    Attempt to decompile or reverse engineer any software
+                    contained in the Service
+                  </li>
+                  <li>
+                    Remove any copyright or proprietary notations from the
+                    Service
+                  </li>
+                  <li>
+                    Attempt to gain unauthorized access to any portion or
+                    feature of the Service
+                  </li>
+                  <li>Use the Service to send spam or unsolicited messages</li>
+                </ul>
               </section>
 
               {/* Section 5 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  5. Accuracy of Materials
+                  5. Message Content and Control
                 </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  The materials appearing on the Service could include
-                  technical, typographical, or photographic errors. The Service
-                  does not warrant that any of the materials on the Service are
-                  accurate, complete, or current. The Service may make changes
-                  to the materials contained on the Service at any time without
-                  notice.
+                <p className="text-gray-600 mb-4 leading-relaxed">
+                  You understand and agree that:
                 </p>
+                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
+                  <li>
+                    VoxioDesk controls all message content, templates, and
+                    automation logic
+                  </li>
+                  <li>
+                    Messages are sent automatically based on predefined
+                    workflows designed by VoxioDesk
+                  </li>
+                  <li>
+                    You provide business information (name, services, etc.) that
+                    may be included in messages
+                  </li>
+                  <li>
+                    VoxioDesk may update message templates and workflows at any
+                    time to improve service quality
+                  </li>
+                  <li>
+                    You do not have the ability to customize individual message
+                    content sent to customers
+                  </li>
+                </ul>
               </section>
 
               {/* Section 6 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  6. Links
+                  6. Disclaimer
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  The Service has not reviewed all of the sites linked to its
-                  website and is not responsible for the contents of any such
-                  linked site. The inclusion of any link does not imply
-                  endorsement by the Service of the site. Use of any such linked
-                  website is at the user's own risk.
+                  The Service is provided on an 'as is' basis. VoxioDesk makes
+                  no warranties, expressed or implied, regarding the Service
+                  including, without limitation, implied warranties of
+                  merchantability, fitness for a particular purpose, or
+                  non-infringement. VoxioDesk does not guarantee that automated
+                  messages will result in booked appointments or customer
+                  satisfaction.
                 </p>
               </section>
 
               {/* Section 7 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  7. Modifications
+                  7. Limitations of Liability
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  The Service may revise these terms of service for its website
-                  at any time without notice. By using this website, you are
-                  agreeing to be bound by the then current version of these
-                  terms of service.
+                  VoxioDesk shall not be liable for any damages (including,
+                  without limitation, damages for loss of business, customer
+                  complaints, regulatory fines, or missed appointments) arising
+                  out of the use or inability to use the Service, even if
+                  VoxioDesk has been notified of the possibility of such damage.
+                  You agree to indemnify and hold VoxioDesk harmless from any
+                  claims arising from messages sent on your behalf through the
+                  Service.
                 </p>
               </section>
 
               {/* Section 8 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  8. Governing Law
+                  8. Compliance with Laws
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  These terms and conditions are governed by and construed in
-                  accordance with the laws of [Your Jurisdiction], and you
-                  irrevocably submit to the exclusive jurisdiction of the courts
-                  located in that location.
+                  You are responsible for ensuring your use of the Service
+                  complies with all applicable laws and regulations, including
+                  but not limited to telecommunications laws, privacy laws, and
+                  consumer protection laws in your jurisdiction. VoxioDesk
+                  provides the technology platform, but you are responsible for
+                  lawful use in your business context.
                 </p>
               </section>
 
               {/* Section 9 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  9. Account Responsibilities
+                  9. Account Termination
                 </h3>
                 <p className="text-gray-600 leading-relaxed">
-                  You are responsible for maintaining the confidentiality of
-                  your account information and password. You agree to accept
-                  responsibility for all activities that occur under your
-                  account. You must notify the Service immediately of any
-                  unauthorized use of your account.
+                  VoxioDesk reserves the right to suspend or terminate your
+                  account at any time if we determine you are using the Service
+                  in violation of these Terms, applicable laws, or in a manner
+                  that could harm VoxioDesk or other users. You may cancel your
+                  account at any time by contacting us.
                 </p>
               </section>
 
               {/* Section 10 */}
               <section className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-4">
-                  10. Prohibited Uses
+                  10. Modifications to Terms
                 </h3>
-                <p className="text-gray-600 mb-4 leading-relaxed">
-                  You agree not to use the Service for any unlawful purposes or
-                  in violation of any applicable laws or regulations.
-                  Specifically, you agree not to:
+                <p className="text-gray-600 leading-relaxed">
+                  VoxioDesk may revise these Terms of Service at any time.
+                  Material changes will be communicated to you via email or
+                  through the Service. Your continued use of the Service after
+                  changes are posted constitutes acceptance of the modified
+                  terms.
                 </p>
-                <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
-                  <li>Harass, threaten, or abuse other users</li>
-                  <li>Send unsolicited or fraudulent messages</li>
-                  <li>Violate any applicable laws regarding communications</li>
-                  <li>Attempt to breach security measures</li>
-                  <li>Interfere with the normal operation of the Service</li>
-                </ul>
+              </section>
+
+              {/* Section 11 */}
+              <section className="mb-12">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  11. Governing Law
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  These terms and conditions are governed by and construed in
+                  accordance with applicable laws, and you irrevocably submit to
+                  the exclusive jurisdiction of the courts in the applicable
+                  location.
+                </p>
+              </section>
+
+              {/* Section 12 */}
+              <section className="mb-12">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                  12. Contact Information
+                </h3>
+                <p className="text-gray-600 leading-relaxed">
+                  For questions about these Terms of Service, please contact us
+                  at lupiascend@gmail.com.
+                </p>
               </section>
             </div>
           </motion.div>

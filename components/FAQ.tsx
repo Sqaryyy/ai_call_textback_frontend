@@ -139,7 +139,7 @@ export default function FAQSection() {
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="overflow-hidden"
+                    className="overflow-hidden bg-white"
                   >
                     <div className="px-6 pb-6">
                       <p className="text-gray-600 leading-relaxed">
@@ -158,7 +158,7 @@ export default function FAQSection() {
           initial={{ y: 30, opacity: 0 }}
           animate={isInView ? { y: 0, opacity: 1 } : { y: 30, opacity: 0 }}
           transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-          className="mt-16 text-center bg-gray-50 rounded-2xl p-8 border-2 border-gray-100"
+          className="mt-16 text-center bg-gray-50 rounded-2xl p-8 border-2 border-black"
         >
           <h3 className="text-2xl font-bold text-gray-900 mb-3">
             Still have questions?
@@ -171,6 +171,12 @@ export default function FAQSection() {
               scale: 1.02,
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
             }}
+            onClick={() =>
+              window.open(
+                "https://calendly.com/lukapilip/discovery-call",
+                "_blank"
+              )
+            }
             whileTap={{ scale: 0.98 }}
             className="px-8 py-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
           >

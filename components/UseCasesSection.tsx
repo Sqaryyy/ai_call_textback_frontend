@@ -225,10 +225,16 @@ export default function UseCasesSection() {
               scale: 1.02,
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
             }}
+            onClick={() =>
+              window.open(
+                "https://calendly.com/lukapilip/discovery-call",
+                "_blank"
+              )
+            }
             whileTap={{ scale: 0.98 }}
             className="px-8 py-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
           >
-            Schedule a Demo
+            Schedule a Call
           </motion.button>
         </motion.div>
       </div>

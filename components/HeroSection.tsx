@@ -29,25 +29,6 @@ export default function VoxioDeskHero() {
           />
         </button>
 
-        {/* Navigation Links */}
-        <div className="hidden md:flex items-center gap-8 text-gray-700 text-sm font-medium">
-          {["Features", "Pricing", "Resources"].map((item, i) => (
-            <motion.button
-              key={item}
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.1 + i * 0.1,
-                ease: "easeOut",
-              }}
-              className="hover:text-gray-900"
-            >
-              {item}
-            </motion.button>
-          ))}
-        </div>
-
         {/* CTA Button */}
         <motion.button
           initial={{ y: -20, opacity: 0 }}
@@ -55,9 +36,15 @@ export default function VoxioDeskHero() {
           transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() =>
+            window.open(
+              "https://calendly.com/lukapilip/discovery-call",
+              "_blank"
+            )
+          }
           className="px-6 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
         >
-          Book Demo
+          Get Started
         </motion.button>
       </motion.nav>
 
@@ -97,9 +84,15 @@ export default function VoxioDeskHero() {
                   boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
                 }}
                 whileTap={{ scale: 0.98 }}
-                className="px-8 py-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                onClick={() =>
+                  window.open(
+                    "https://calendly.com/lukapilip/discovery-call",
+                    "_blank"
+                  )
+                }
+                className="px-8 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-900 transition-colors"
               >
-                Start Free Trial
+                Schedule a Call
               </motion.button>
               <motion.button
                 whileHover={{
@@ -108,20 +101,11 @@ export default function VoxioDeskHero() {
                 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/demo")}
-                className="px-8 py-4 bg-white text-gray-900 rounded-lg font-medium border border-gray-200 hover:border-gray-300 transition-colors"
+                className="px-8 py-4 bg-white text-black rounded-lg font-medium border border-gray-200 hover:border-gray-300 transition-colors"
               >
                 Watch Demo
               </motion.button>
             </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-              className="text-sm text-gray-500 pt-2"
-            >
-              Free 14-day trial • No credit card required
-            </motion.p>
           </div>
 
           {/* Right Column - iPhone Mockup */}
