@@ -108,7 +108,7 @@ export default function AIDemoChat() {
 
   const fetchBusinessData = async (sid: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/business/${sid}`);
+      const response = await fetch(`${API_BASE_URL}/demo/business/${sid}`);
       if (response.ok) {
         const data = await response.json();
         setBusinessData(data);

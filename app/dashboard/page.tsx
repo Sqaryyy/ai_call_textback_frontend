@@ -1,13 +1,16 @@
 "use client";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 export default function MetricsDashboard() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [businessId, setBusinessId] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
   type Metrics = {
     total_conversations: number;
     response_rate: number;
@@ -34,7 +37,7 @@ export default function MetricsDashboard() {
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/api/v1/metrics/${businessId}/summary?year=${year}&month=${month}`
+        `${API_BASE_URL}/metrics/${businessId}/summary?year=${year}&month=${month}`
       );
       if (!response.ok) {
         throw new Error("Failed to fetch metrics");
@@ -77,7 +80,6 @@ export default function MetricsDashboard() {
     >
       <div className="max-w-6xl mx-auto px-6 md:px-12">
         {!isAuthenticated ? (
-          // Step 1: Business ID Entry
           <div className="min-h-[60vh] flex items-center justify-center">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -126,9 +128,7 @@ export default function MetricsDashboard() {
             </motion.div>
           </div>
         ) : (
-          // Step 2: Dashboard View
           <>
-            {/* Section Header with Filter Controls */}
             <div className="mb-12">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
                 <div>
@@ -154,7 +154,6 @@ export default function MetricsDashboard() {
                 </motion.button>
               </div>
 
-              {/* Filter Controls */}
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
@@ -207,7 +206,6 @@ export default function MetricsDashboard() {
               </motion.div>
             </div>
 
-            {/* Metrics Display */}
             {metrics && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -215,7 +213,6 @@ export default function MetricsDashboard() {
                 transition={{ duration: 0.8 }}
                 className="space-y-12"
               >
-                {/* Main KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
                     {
@@ -265,7 +262,6 @@ export default function MetricsDashboard() {
                   ))}
                 </div>
 
-                {/* Secondary Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
                     {
@@ -310,9 +306,7 @@ export default function MetricsDashboard() {
                   ))}
                 </div>
 
-                {/* Comparison Section */}
                 <div className="grid md:grid-cols-2 gap-8">
-                  {/* Completed vs Abandoned */}
                   <motion.div
                     initial={{ x: -30, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
@@ -359,7 +353,6 @@ export default function MetricsDashboard() {
                     </div>
                   </motion.div>
 
-                  {/* Key Stats */}
                   <motion.div
                     initial={{ x: 30, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
@@ -413,7 +406,6 @@ export default function MetricsDashboard() {
                   </motion.div>
                 </div>
 
-                {/* Period Info */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -433,7 +425,6 @@ export default function MetricsDashboard() {
               </motion.div>
             )}
 
-            {/* Empty State */}
             {!metrics && !loading && isAuthenticated && (
               <motion.div
                 initial={{ opacity: 0 }}
