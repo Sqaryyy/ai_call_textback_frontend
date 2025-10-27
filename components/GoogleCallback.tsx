@@ -1,11 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle, Loader2, Calendar } from "lucide-react";
+import { TokenManager } from "@/lib/auth/token-manager";
 
 interface CalendarItem {
   id: string;
   name: string;
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function GoogleCallback() {
   const [status, setStatus] = useState("processing");
@@ -35,13 +38,18 @@ export default function GoogleCallback() {
           return;
         }
 
-        // Call the backend callback endpoint
+        // Call the backend callback endpoint with credentials
         const response = await fetch(
-          `https://voxiodesk.com/api/v1/calendar/google/callback?code=${encodeURIComponent(
+          `${API_BASE_URL}/api/v1/dashboard/calendar/google/callback?code=${encodeURIComponent(
             code
           )}&state=${encodeURIComponent(state)}`,
           {
             method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...TokenManager.getAuthHeader(),
+            },
+            credentials: "include",
           }
         );
 
@@ -49,19 +57,12 @@ export default function GoogleCallback() {
           throw new Error(`Server responded with status: ${response.status}`);
         }
 
-        const data = await response.json();
+        // Backend returns HTML, but we need to poll for status
+        setStatus("polling");
+        setMessage("Checking integration status...");
 
-        if (data.success && data.calendars && data.calendars.length > 0) {
-          setStatus("select-calendar");
-          setCalendars(data.calendars);
-          setIntegrationId(data.integration_id);
-          setMessage("Select the calendar you want to use for appointments");
-          setSelectedCalendar(data.calendars[0].id);
-        } else {
-          setStatus("success");
-          setMessage("Successfully connected to Google Calendar!");
-          setTimeout(() => window.close(), 2000);
-        }
+        // Start polling for callback status
+        await pollCallbackStatus();
       } catch (err) {
         setStatus("error");
         setMessage(
@@ -72,6 +73,59 @@ export default function GoogleCallback() {
       }
     };
 
+    const pollCallbackStatus = async () => {
+      let attempts = 0;
+      const maxAttempts = 30; // 30 attempts = 30 seconds
+
+      const poll = async () => {
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/api/v1/dashboard/calendar/google/callback-status`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                ...TokenManager.getAuthHeader(),
+              },
+              credentials: "include",
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`Failed to check status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          if (data.success && data.calendars && data.calendars.length > 0) {
+            setStatus("select-calendar");
+            setCalendars(data.calendars);
+            setIntegrationId(data.integration_id);
+            setMessage("Select the calendar you want to use for appointments");
+            setSelectedCalendar(data.calendars[0].id);
+            return;
+          }
+
+          // If not successful yet, try again
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 1000); // Poll every 1 second
+          } else {
+            throw new Error("Timeout waiting for callback to complete");
+          }
+        } catch (err) {
+          setStatus("error");
+          setMessage(
+            `Error: ${
+              err instanceof Error ? err.message : "Failed to check status"
+            }`
+          );
+        }
+      };
+
+      poll();
+    };
+
     handleCallback();
   }, []);
 
@@ -80,16 +134,18 @@ export default function GoogleCallback() {
 
     setSettingCalendar(true);
     try {
-      // Step 1: Select the calendar
+      // Select the calendar
       const selectResponse = await fetch(
-        `https://voxiodesk.com/api/v1/calendar/google/${integrationId}/select-calendar?calendar_id=${encodeURIComponent(
+        `${API_BASE_URL}/api/v1/dashboard/calendar/google/${integrationId}/select-calendar?calendar_id=${encodeURIComponent(
           selectedCalendar
         )}`,
         {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            ...TokenManager.getAuthHeader(),
           },
+          credentials: "include",
         }
       );
 
@@ -97,28 +153,24 @@ export default function GoogleCallback() {
         throw new Error(`Failed to select calendar: ${selectResponse.status}`);
       }
 
-      // Step 2: Set as primary
-      const primaryResponse = await fetch(
-        `https://voxiodesk.com/api/v1/calendar/${integrationId}/set-primary`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!primaryResponse.ok) {
-        throw new Error(
-          `Failed to set primary calendar: ${primaryResponse.status}`
-        );
-      }
-
-      const data = await primaryResponse.json();
+      const data = await selectResponse.json();
 
       if (data.success) {
         setStatus("success");
         setMessage("Calendar successfully configured!");
+
+        // Notify parent window that setup is complete
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: "calendar-connected",
+              provider: "google",
+              integrationId,
+            },
+            window.location.origin
+          );
+        }
+
         setTimeout(() => window.close(), 2000);
       }
     } catch (err) {
@@ -137,7 +189,7 @@ export default function GoogleCallback() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
         <div className="flex flex-col items-center text-center">
-          {status === "processing" && (
+          {(status === "processing" || status === "polling") && (
             <>
               <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
               <h2 className="text-2xl font-bold text-gray-800 mb-2">

@@ -1,638 +1,912 @@
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Calendar,
+  Building,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
+import { TokenManager } from "@/lib/auth/token-manager";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001/api/v1";
+// ============= TYPES =============
+interface BusinessFormData {
+  name: string;
+  phone_number: string;
+  business_type: string;
+  timezone: string;
+  services: string[];
+  contact_info: {
+    email?: string;
+    address?: string;
+  };
+}
 
-export default function OnboardingDashboard() {
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+interface BusinessHour {
+  day_of_week: number;
+  open_time: string;
+  close_time: string;
+  is_closed: boolean;
+}
 
-  // Form state
-  const [businessInfo, setBusinessInfo] = useState<{
-    name: string;
-    phone_number: string;
-    business_type: string;
-    timezone: string;
-    services: string[];
-  }>({
+interface CalendarOption {
+  id: string;
+  name: string;
+}
+
+interface CalendarIntegration {
+  id: string;
+  provider: string;
+  is_primary: boolean;
+  created_at: string;
+}
+
+interface OnboardingStatus {
+  business_created: boolean;
+  business_hours_configured: boolean;
+  calendar_connected: boolean;
+  primary_calendar_set: boolean;
+  onboarding_complete: boolean;
+  next_step: string;
+}
+
+// ============= API BASE URL =============
+const API_BASE = "http://localhost:8000/api/v1/dashboard";
+
+// ============= HELPER: Get Auth Headers =============
+const getAuthHeaders = () => ({
+  ...TokenManager.getAuthHeader(),
+  "Content-Type": "application/json",
+});
+
+// ============= STEP 1: BUSINESS INFO =============
+const BusinessInfoStep: React.FC<{
+  onNext: (businessId: string) => void;
+  businessId?: string;
+}> = ({ onNext, businessId }) => {
+  const [formData, setFormData] = useState<BusinessFormData>({
     name: "",
     phone_number: "",
     business_type: "",
     timezone: "America/New_York",
     services: [],
+    contact_info: {},
   });
-
   const [serviceInput, setServiceInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [businessHours, setBusinessHours] = useState([
-    {
-      day_of_week: 0,
-      day_name: "Monday",
-      open_time: "09:00",
-      close_time: "17:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 1,
-      day_name: "Tuesday",
-      open_time: "09:00",
-      close_time: "17:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 2,
-      day_name: "Wednesday",
-      open_time: "09:00",
-      close_time: "17:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 3,
-      day_name: "Thursday",
-      open_time: "09:00",
-      close_time: "17:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 4,
-      day_name: "Friday",
-      open_time: "09:00",
-      close_time: "17:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 5,
-      day_name: "Saturday",
-      open_time: "10:00",
-      close_time: "16:00",
-      is_closed: false,
-    },
-    {
-      day_of_week: 6,
-      day_name: "Sunday",
-      open_time: "10:00",
-      close_time: "16:00",
-      is_closed: true,
-    },
-  ]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  const [calendarProvider, setCalendarProvider] = useState("google");
-  const [authUrl, setAuthUrl] = useState("");
-  const [authCode, setAuthCode] = useState("");
-  const [businessId, setBusinessId] = useState("");
+    try {
+      const response = await fetch(`${API_BASE}/onboarding/business`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(formData),
+      });
 
-  // Calendar selection state
-  type Calendar = {
-    id: string;
-    summary?: string;
-    name?: string;
-    description?: string;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to create business");
+      }
+
+      const data = await response.json();
+      onNext(data.business_id);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
-  const [availableCalendars, setAvailableCalendars] = useState<Calendar[]>([]);
-  const [selectedCalendarId, setSelectedCalendarId] = useState("");
-  const [integrationId, setIntegrationId] = useState("");
-
-  interface OnboardingResponse {
-    business_id?: string;
-    business_name?: string;
-    calendar_provider?: string;
-    next_steps?: string[];
-  }
-
-  const [response, setResponse] = useState<OnboardingResponse | null>(null);
 
   const addService = () => {
     if (
       serviceInput.trim() &&
-      !businessInfo.services.includes(serviceInput.trim())
+      !formData.services.includes(serviceInput.trim())
     ) {
-      setBusinessInfo({
-        ...businessInfo,
-        services: [...businessInfo.services, serviceInput.trim()],
+      setFormData({
+        ...formData,
+        services: [...formData.services, serviceInput.trim()],
       });
       setServiceInput("");
     }
   };
 
-  interface BusinessInfo {
-    name: string;
-    phone_number: string;
-    business_type: string;
-    timezone: string;
-    services: string[];
-  }
-
   const removeService = (service: string) => {
-    setBusinessInfo((prev: BusinessInfo) => ({
-      ...prev,
-      services: prev.services.filter((s: string) => s !== service),
-    }));
-  };
-
-  const updateHours = (
-    index: number,
-    field: string,
-    value: string | boolean
-  ) => {
-    const updated = [...businessHours];
-    updated[index] = { ...updated[index], [field]: value };
-    setBusinessHours(updated);
-  };
-
-  // Step 1: Create business and get authorization URL
-  const getAuthorizationUrl = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      // Step 1: Create business with hours
-      const createPayload = {
-        name: businessInfo.name,
-        phone_number: businessInfo.phone_number,
-        business_type: businessInfo.business_type,
-        timezone: businessInfo.timezone,
-        services: businessInfo.services,
-        business_hours: businessHours.map((h) => ({
-          day_of_week: h.day_of_week,
-          open_time: h.open_time,
-          close_time: h.close_time,
-          is_closed: h.is_closed,
-        })),
-      };
-
-      const createRes = await fetch(
-        `${API_BASE_URL}/onboarding/business/create`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(createPayload),
-        }
-      );
-
-      if (!createRes.ok) {
-        const errorData = await createRes.json();
-        throw new Error(errorData.detail || "Failed to create business");
-      }
-
-      const createData = await createRes.json();
-      const newBusinessId = createData.business_id;
-      setBusinessId(newBusinessId);
-
-      // Step 2: Get authorization URL
-      const authRes = await fetch(
-        `${API_BASE_URL}/onboarding/business/${newBusinessId}/calendar/authorize?provider=${calendarProvider}`,
-        { method: "POST" }
-      );
-
-      if (!authRes.ok) {
-        const errorData = await authRes.json();
-        throw new Error(errorData.detail || "Failed to get authorization URL");
-      }
-
-      const authData = await authRes.json();
-      setAuthUrl(authData.authorization_url);
-      setStep(4); // Move to authorization step
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle OAuth callback with authorization code
-  const handleOAuthCallback = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/onboarding/business/${businessId}/calendar/callback`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code: authCode,
-            provider: calendarProvider,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to complete OAuth");
-      }
-
-      // OAuth completed, get available calendars
-      setIntegrationId(data.integration_id);
-      setAvailableCalendars(data.available_calendars || []);
-      setStep(5);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Check for completed OAuth integration (alternative flow)
-  const checkOAuthStatus = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/onboarding/business/${businessId}/calendar/check-status`,
-        { method: "GET" }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to check OAuth status");
-      }
-
-      if (data.integration_found) {
-        // OAuth completed, move to calendar selection
-        setIntegrationId(data.integration_id);
-        setAvailableCalendars(data.available_calendars || []);
-        setStep(5);
-      } else {
-        // Still waiting for OAuth
-        setError(
-          "Authorization not yet completed. Please complete the OAuth flow and try again."
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 3: Select primary calendar
-  const selectPrimaryCalendar = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/onboarding/business/${businessId}/calendar/${integrationId}/select-primary?calendar_id=${encodeURIComponent(
-          selectedCalendarId
-        )}`,
-        { method: "PATCH" }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to select calendar");
-      }
-
-      setResponse(data);
-      setSuccess(true);
-      setStep(6); // Move to success step
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setStep(1);
-    setSuccess(false);
-    setBusinessId("");
-    setAuthUrl("");
-    setAuthCode("");
-    setAvailableCalendars([]);
-    setSelectedCalendarId("");
-    setIntegrationId("");
-    setBusinessInfo({
-      name: "",
-      phone_number: "",
-      business_type: "",
-      timezone: "America/New_York",
-      services: [],
+    setFormData({
+      ...formData,
+      services: formData.services.filter((s) => s !== service),
     });
-    setBusinessHours([
-      {
-        day_of_week: 0,
-        day_name: "Monday",
-        open_time: "09:00",
-        close_time: "17:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 1,
-        day_name: "Tuesday",
-        open_time: "09:00",
-        close_time: "17:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 2,
-        day_name: "Wednesday",
-        open_time: "09:00",
-        close_time: "17:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 3,
-        day_name: "Thursday",
-        open_time: "09:00",
-        close_time: "17:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 4,
-        day_name: "Friday",
-        open_time: "09:00",
-        close_time: "17:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 5,
-        day_name: "Saturday",
-        open_time: "10:00",
-        close_time: "16:00",
-        is_closed: false,
-      },
-      {
-        day_of_week: 6,
-        day_name: "Sunday",
-        open_time: "10:00",
-        close_time: "16:00",
-        is_closed: true,
-      },
-    ]);
   };
-
-  const progressPercentage = (step / 6) * 100;
 
   return (
-    <div className="min-h-screen py-20 md:py-32 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="max-w-4xl mx-auto px-6 md:px-12">
-        {/* Header */}
-        <motion.div
-          initial={{ y: -30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Business Onboarding
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Let's get your business set up in just a few steps
-          </p>
-        </motion.div>
+    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <div className="flex items-center mb-6">
+        <Building className="w-8 h-8 text-blue-600 mr-3" />
+        <h2 className="text-2xl font-bold text-gray-800">
+          Business Information
+        </h2>
+      </div>
 
-        {/* Progress Bar */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mb-12"
-        >
-          <div className="flex justify-between mb-4">
-            {[
-              "Business Info",
-              "Hours",
-              "Calendar",
-              "Authorize",
-              "Select Calendar",
-              "Complete",
-            ].map((label, i) => (
-              <div
-                key={i}
-                className={`flex flex-col items-center ${
-                  step > i + 1
-                    ? "text-green-600"
-                    : step === i + 1
-                    ? "text-gray-900"
-                    : "text-gray-400"
-                }`}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+          <span className="text-red-800">{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Business Name *
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Jane's Hair Salon"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Phone Number *
+          </label>
+          <input
+            type="tel"
+            required
+            value={formData.phone_number}
+            onChange={(e) =>
+              setFormData({ ...formData, phone_number: e.target.value })
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="+15551234567"
+          />
+          <p className="text-xs text-gray-500 mt-1">Format: +1XXXXXXXXXX</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Business Type *
+          </label>
+          <select
+            required
+            value={formData.business_type}
+            onChange={(e) =>
+              setFormData({ ...formData, business_type: e.target.value })
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Select a type</option>
+            <option value="salon">Hair Salon</option>
+            <option value="barbershop">Barbershop</option>
+            <option value="spa">Spa</option>
+            <option value="clinic">Medical Clinic</option>
+            <option value="dental">Dental Office</option>
+            <option value="consulting">Consulting</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Timezone *
+          </label>
+          <select
+            required
+            value={formData.timezone}
+            onChange={(e) =>
+              setFormData({ ...formData, timezone: e.target.value })
+            }
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="America/New_York">Eastern Time</option>
+            <option value="America/Chicago">Central Time</option>
+            <option value="America/Denver">Mountain Time</option>
+            <option value="America/Los_Angeles">Pacific Time</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Services Offered
+          </label>
+          <div className="flex gap-2 mb-2">
+            <input
+              type="text"
+              value={serviceInput}
+              onChange={(e) => setServiceInput(e.target.value)}
+              onKeyPress={(e) =>
+                e.key === "Enter" && (e.preventDefault(), addService())
+              }
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g., Haircut, Coloring"
+            />
+            <button
+              type="button"
+              onClick={addService}
+              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+            >
+              Add
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {formData.services.map((service) => (
+              <span
+                key={service}
+                className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm flex items-center gap-2"
               >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1 border-2 text-xs ${
-                    step > i + 1
-                      ? "bg-green-500 text-white border-green-500"
-                      : step === i + 1
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white border-gray-300"
-                  }`}
+                {service}
+                <button
+                  type="button"
+                  onClick={() => removeService(service)}
+                  className="text-blue-500 hover:text-blue-700"
                 >
-                  {step > i + 1 ? "✓" : i + 1}
-                </div>
-                <span className="text-xs font-medium hidden lg:block">
-                  {label}
-                </span>
-              </div>
+                  ×
+                </button>
+              </span>
             ))}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPercentage}%` }}
-              transition={{ duration: 0.5 }}
-              className="bg-gray-900 h-2 rounded-full"
-            />
-          </div>
-        </motion.div>
+        </div>
 
-        {/* Error Display */}
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 text-red-700"
-            >
-              <p className="font-medium">⚠️ {error}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Step Content */}
-        <motion.div
-          key={step}
-          initial={{ x: 50, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -50, opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-2xl p-8 md:p-12 border border-gray-200 shadow-2xl"
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
         >
-          {/* Step 1: Business Info */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                Business Information
-              </h2>
+          {loading ? "Creating..." : "Continue to Business Hours"}
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </form>
+    </div>
+  );
+};
 
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Business Name *
-                </label>
+// ============= STEP 2: BUSINESS HOURS =============
+const BusinessHoursStep: React.FC<{
+  businessId: string;
+  onNext: () => void;
+  onBack: () => void;
+}> = ({ businessId, onNext, onBack }) => {
+  const dayNames = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+  const [hours, setHours] = useState<BusinessHour[]>(
+    dayNames.map((_, index) => ({
+      day_of_week: index,
+      open_time: "09:00",
+      close_time: "17:00",
+      is_closed: index >= 5, // Weekend closed by default
+    }))
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const updateHour = (index: number, field: keyof BusinessHour, value: any) => {
+    const newHours = [...hours];
+    newHours[index] = { ...newHours[index], [field]: value };
+    setHours(newHours);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/onboarding/${businessId}/business-hours`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify(hours),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to save business hours");
+      }
+
+      onNext();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <div className="flex items-center mb-6">
+        <Clock className="w-8 h-8 text-blue-600 mr-3" />
+        <h2 className="text-2xl font-bold text-gray-800">Business Hours</h2>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+          <span className="text-red-800">{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {hours.map((hour, index) => (
+          <div key={index} className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-medium text-gray-800">
+                {dayNames[index]}
+              </span>
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
-                  type="text"
-                  value={businessInfo.name}
+                  type="checkbox"
+                  checked={hour.is_closed}
                   onChange={(e) =>
-                    setBusinessInfo({ ...businessInfo, name: e.target.value })
+                    updateHour(index, "is_closed", e.target.checked)
                   }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  placeholder="e.g., Acme Salon"
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={businessInfo.phone_number}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^\d+]/g, "");
-                    setBusinessInfo({
-                      ...businessInfo,
-                      phone_number: cleaned,
-                    });
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  placeholder="+1234567890"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Format: +[country code][number] (e.g., +12025551234). Only
-                  digits, no spaces or dashes.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Business Type *
-                </label>
-                <select
-                  value={businessInfo.business_type}
-                  onChange={(e) =>
-                    setBusinessInfo({
-                      ...businessInfo,
-                      business_type: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                >
-                  <option value="">Select a type...</option>
-                  <option value="salon">Salon</option>
-                  <option value="spa">Spa</option>
-                  <option value="clinic">Clinic</option>
-                  <option value="restaurant">Restaurant</option>
-                  <option value="consulting">Consulting</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Timezone
-                </label>
-                <select
-                  value={businessInfo.timezone}
-                  onChange={(e) =>
-                    setBusinessInfo({
-                      ...businessInfo,
-                      timezone: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                >
-                  <option value="America/New_York">Eastern (New York)</option>
-                  <option value="America/Chicago">Central (Chicago)</option>
-                  <option value="America/Denver">Mountain (Denver)</option>
-                  <option value="America/Los_Angeles">
-                    Pacific (Los Angeles)
-                  </option>
-                  <option value="UTC">UTC</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">
-                  Services Offered
-                </label>
-                <div className="flex gap-2 mb-3">
-                  <input
-                    type="text"
-                    value={serviceInput}
-                    onChange={(e) => setServiceInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addService()}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    placeholder="e.g., Haircut"
-                  />
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={addService}
-                    className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800"
-                  >
-                    Add
-                  </motion.button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {businessInfo.services.map((service) => (
-                    <span
-                      key={service}
-                      className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium flex items-center gap-2"
-                    >
-                      {service}
-                      <button
-                        onClick={() => removeService(service)}
-                        className="hover:text-blue-900"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  if (
-                    !businessInfo.name ||
-                    !businessInfo.phone_number ||
-                    !businessInfo.business_type
-                  ) {
-                    setError("Please fill in all required fields");
-                    return;
-                  }
-                  const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-                  if (!phoneRegex.test(businessInfo.phone_number)) {
-                    setError(
-                      "Invalid phone number format. Use +[country code][number] with only digits (e.g., +12025551234)"
-                    );
-                    return;
-                  }
-                  setError("");
-                  setStep(2);
-                }}
-                className="w-full px-8 py-4 bg-gray-900 text-white rounded-lg font-medium text-lg hover:bg-gray-800 transition-colors mt-6"
-              >
-                Continue to Business Hours →
-              </motion.button>
+                <span className="text-sm text-gray-600">Closed</span>
+              </label>
             </div>
-          )}
+            {!hour.is_closed && (
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Open Time
+                  </label>
+                  <input
+                    type="time"
+                    value={hour.open_time}
+                    onChange={(e) =>
+                      updateHour(index, "open_time", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-600 mb-1">
+                    Close Time
+                  </label>
+                  <input
+                    type="time"
+                    value={hour.close_time}
+                    onChange={(e) =>
+                      updateHour(index, "close_time", e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
 
-          {/* Additional steps would continue here - truncated for brevity */}
-          {/* The rest of the steps (2-6) remain the same as in your original code */}
-        </motion.div>
+        <div className="flex gap-4 pt-4">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 flex items-center justify-center gap-2"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Back
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+          >
+            {loading ? "Saving..." : "Continue to Calendar"}
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+// ============= STEP 3: CALENDAR CONNECTION & SELECTION =============
+const CalendarConnectionStep: React.FC<{
+  businessId: string;
+  onNext: () => void;
+  onBack: () => void;
+}> = ({ businessId, onNext, onBack }) => {
+  const [integrationId, setIntegrationId] = useState<string>("");
+  const [availableCalendars, setAvailableCalendars] = useState<
+    CalendarOption[]
+  >([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string>("");
+  const [provider, setProvider] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState<"connect" | "select">("connect");
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check if calendar already connected
+    checkExistingIntegration();
+  }, [businessId]);
+
+  useEffect(() => {
+    // Start polling when waiting for OAuth callback (only if provider is set)
+    if (step === "connect" && !integrationId && provider) {
+      pollingIntervalRef.current = setInterval(checkForNewIntegration, 2000);
+    }
+
+    // Cleanup polling on unmount or when integration is found
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [step, integrationId, provider]);
+
+  const checkExistingIntegration = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/onboarding/${businessId}/calendar-status`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
+      const data = await response.json();
+
+      if (data.integrations && data.integrations.length > 0) {
+        const integration = data.integrations[0];
+        // If already has calendars list, go to select step
+        if (integration.provider_config?.calendar_list) {
+          setIntegrationId(integration.id);
+          setProvider(integration.provider);
+          setAvailableCalendars(integration.provider_config.calendar_list);
+          setStep("select");
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check existing integration:", err);
+    }
+  };
+
+  const checkForNewIntegration = async () => {
+    // Don't poll if provider isn't set yet
+    if (!provider) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/calendar/${provider}/callback-status/${businessId}`,
+        {
+          headers: getAuthHeaders(),
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.integration_id) {
+          // Stop polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+
+          setIntegrationId(data.integration_id);
+          setAvailableCalendars(data.calendars || []);
+          setStep("select");
+        }
+      }
+    } catch (err) {
+      // Silently fail - this is just polling
+    }
+  };
+
+  const connectCalendar = async (calendarProvider: string) => {
+    setLoading(true);
+    setError("");
+    setProvider(calendarProvider);
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/calendar/${calendarProvider}/authorize/${businessId}`,
+        {
+          method: "POST",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to initiate calendar connection");
+      }
+
+      const data = await response.json();
+
+      // Open OAuth window
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      window.open(
+        data.authorization_url,
+        "oauth",
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+    } catch (err: any) {
+      setError(err.message);
+      setProvider("");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectCalendar = async () => {
+    if (!selectedCalendarId) {
+      setError("Please select a calendar");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      // Select the calendar within the integration
+      const selectResponse = await fetch(
+        `${API_BASE}/calendar/${provider}/${integrationId}/select-calendar?calendar_id=${encodeURIComponent(
+          selectedCalendarId
+        )}`,
+        {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!selectResponse.ok) {
+        throw new Error("Failed to select calendar");
+      }
+
+      // Set this integration as primary
+      const primaryResponse = await fetch(
+        `${API_BASE}/onboarding/${businessId}/primary-calendar/${integrationId}`,
+        {
+          method: "PATCH",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      if (!primaryResponse.ok) {
+        throw new Error("Failed to set primary calendar");
+      }
+
+      onNext();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (step === "select") {
+    return (
+      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+        <div className="flex items-center mb-6">
+          <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+          <h2 className="text-2xl font-bold text-gray-800">
+            Select Your Calendar
+          </h2>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        )}
+
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <span className="text-green-800">
+            Successfully connected to {provider} Calendar!
+          </span>
+        </div>
+
+        <p className="text-gray-600 mb-6">
+          Choose which calendar you want to use for managing appointments:
+        </p>
+
+        <div className="space-y-3 mb-8">
+          {availableCalendars.map((calendar) => (
+            <label
+              key={calendar.id}
+              className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                selectedCalendarId === calendar.id
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="calendar"
+                value={calendar.id}
+                checked={selectedCalendarId === calendar.id}
+                onChange={(e) => setSelectedCalendarId(e.target.value)}
+                className="sr-only"
+              />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-lg shadow flex items-center justify-center text-xl">
+                  📅
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-gray-800">
+                    {calendar.name}
+                  </div>
+                  <div className="text-sm text-gray-500 truncate">
+                    {calendar.id}
+                  </div>
+                </div>
+                {selectedCalendarId === calendar.id && (
+                  <CheckCircle className="w-6 h-6 text-blue-600 flex-shrink-0" />
+                )}
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onBack}
+            className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 flex items-center justify-center gap-2"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Back
+          </button>
+          <button
+            onClick={selectCalendar}
+            disabled={!selectedCalendarId || loading}
+            className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2"
+          >
+            {loading ? "Saving..." : "Complete Setup"}
+            <CheckCircle className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      <div className="flex items-center mb-6">
+        <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+        <h2 className="text-2xl font-bold text-gray-800">
+          Connect Your Calendar
+        </h2>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 mr-2 mt-0.5" />
+          <span className="text-red-800">{error}</span>
+        </div>
+      )}
+
+      <p className="text-gray-600 mb-6">
+        Connect your calendar to sync appointments and check availability
+        automatically.
+      </p>
+
+      {provider && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-blue-800 text-sm">
+            ⏳ Waiting for authorization... Please complete the OAuth flow in
+            the popup window.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-4 mb-8">
+        <button
+          onClick={() => connectCalendar("google")}
+          disabled={loading || !!provider}
+          className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="w-12 h-12 bg-white rounded-lg shadow flex items-center justify-center text-2xl">
+            📅
+          </div>
+          <div className="flex-1 text-left">
+            <div className="font-semibold text-gray-800">Google Calendar</div>
+            <div className="text-sm text-gray-500">
+              Connect your Google Calendar
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
+
+        <button
+          onClick={() => connectCalendar("outlook")}
+          disabled={loading || !!provider}
+          className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <div className="w-12 h-12 bg-white rounded-lg shadow flex items-center justify-center text-2xl">
+            📧
+          </div>
+          <div className="flex-1 text-left">
+            <div className="font-semibold text-gray-800">Outlook Calendar</div>
+            <div className="text-sm text-gray-500">
+              Connect your Microsoft Calendar
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-400" />
+        </button>
+      </div>
+
+      <div className="flex gap-4">
+        <button
+          onClick={onBack}
+          className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 flex items-center justify-center gap-2"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          Back
+        </button>
       </div>
     </div>
   );
-}
+};
+
+// ============= MAIN ONBOARDING PAGE =============
+const OnboardingPage: React.FC = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [businessId, setBusinessId] = useState<string>("");
+  const [isComplete, setIsComplete] = useState(false);
+
+  const steps = [
+    { number: 1, title: "Business Info", icon: Building },
+    { number: 2, title: "Business Hours", icon: Clock },
+    { number: 3, title: "Connect Calendar", icon: Calendar },
+  ];
+
+  const handleStep1Complete = (id: string) => {
+    setBusinessId(id);
+    setCurrentStep(2);
+  };
+
+  const handleStep2Complete = () => {
+    setCurrentStep(3);
+  };
+
+  const handleComplete = () => {
+    setIsComplete(true);
+  };
+
+  if (isComplete) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+            🎉 Onboarding Complete!
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Your business is all set up and ready to start taking appointments.
+          </p>
+          <div className="space-y-3 text-left max-w-md mx-auto">
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <span className="text-gray-700">
+                Business information configured
+              </span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <span className="text-gray-700">Business hours set</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <span className="text-gray-700">
+                Calendar connected and selected
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => (window.location.href = "/dashboard")}
+            className="mt-8 px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="max-w-4xl mx-auto mb-12">
+        <h1 className="text-3xl font-bold text-gray-800 text-center mb-2">
+          Welcome to Your Business Setup
+        </h1>
+        <p className="text-gray-600 text-center mb-8">
+          Let's get your business configured in just a few steps
+        </p>
+
+        {/* Progress Steps */}
+        <div className="flex items-center justify-between mb-12">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = currentStep === step.number;
+            const isCompleted = currentStep > step.number;
+
+            return (
+              <React.Fragment key={step.number}>
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-all ${
+                      isCompleted
+                        ? "bg-green-500 text-white"
+                        : isActive
+                        ? "bg-blue-600 text-white ring-4 ring-blue-200"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle className="w-6 h-6" />
+                    ) : (
+                      <Icon className="w-6 h-6" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs font-medium text-center ${
+                      isActive ? "text-blue-600" : "text-gray-500"
+                    }`}
+                  >
+                    {step.title}
+                  </span>
+                </div>
+                {index < steps.length - 1 && (
+                  <div
+                    className={`flex-1 h-1 mx-2 rounded ${
+                      isCompleted ? "bg-green-500" : "bg-gray-200"
+                    }`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* Current Step Content */}
+        {currentStep === 1 && (
+          <BusinessInfoStep
+            onNext={handleStep1Complete}
+            businessId={businessId}
+          />
+        )}
+        {currentStep === 2 && (
+          <BusinessHoursStep
+            businessId={businessId}
+            onNext={handleStep2Complete}
+            onBack={() => setCurrentStep(1)}
+          />
+        )}
+        {currentStep === 3 && (
+          <CalendarConnectionStep
+            businessId={businessId}
+            onNext={handleComplete}
+            onBack={() => setCurrentStep(2)}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default OnboardingPage;
