@@ -10,8 +10,10 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { TokenManager } from "@/lib/auth/token-manager";
+// NEW: Import the routes configuration
+import { API_ROUTES, DASHBOARD_ROUTES } from "@/config/routes";
 
-// ============= TYPES =============
+// ============= TYPES (Unchanged) =============
 interface BusinessFormData {
   name: string;
   phone_number: string;
@@ -52,10 +54,10 @@ interface OnboardingStatus {
   next_step: string;
 }
 
-// ============= API BASE URL =============
-const API_BASE = "http://localhost:8000/api/v1/dashboard";
+// ============= API BASE URL (REMOVED) =============
+// const API_BASE = "http://localhost:8000/api/v1/dashboard"; // Removed!
 
-// ============= HELPER: Get Auth Headers =============
+// ============= HELPER: Get Auth Headers (Unchanged) =============
 const getAuthHeaders = () => ({
   ...TokenManager.getAuthHeader(),
   "Content-Type": "application/json",
@@ -84,7 +86,8 @@ const BusinessInfoStep: React.FC<{
     setError("");
 
     try {
-      const response = await fetch(`${API_BASE}/onboarding/business`, {
+      // REFACTOR: Use API_ROUTES.ONBOARDING.CREATE_BUSINESS
+      const response = await fetch(API_ROUTES.ONBOARDING.CREATE_BUSINESS, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(formData),
@@ -104,6 +107,7 @@ const BusinessInfoStep: React.FC<{
     }
   };
 
+  // ... (addService and removeService logic remains unchanged) ...
   const addService = () => {
     if (
       serviceInput.trim() &&
@@ -126,6 +130,7 @@ const BusinessInfoStep: React.FC<{
 
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      {/* ... JSX remains largely unchanged ... */}
       <div className="flex items-center mb-6">
         <Building className="w-8 h-8 text-blue-600 mr-3" />
         <h2 className="text-2xl font-bold text-gray-800">
@@ -307,14 +312,12 @@ const BusinessHoursStep: React.FC<{
     setError("");
 
     try {
-      const response = await fetch(
-        `${API_BASE}/onboarding/${businessId}/business-hours`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify(hours),
-        }
-      );
+      // REFACTOR: Use API_ROUTES.BUSINESSES.HOURS(businessId)
+      const response = await fetch(API_ROUTES.BUSINESSES.HOURS(businessId), {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(hours),
+      });
 
       if (!response.ok) {
         const data = await response.json();
@@ -331,6 +334,7 @@ const BusinessHoursStep: React.FC<{
 
   return (
     <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+      {/* ... JSX remains largely unchanged ... */}
       <div className="flex items-center mb-6">
         <Clock className="w-8 h-8 text-blue-600 mr-3" />
         <h2 className="text-2xl font-bold text-gray-800">Business Hours</h2>
@@ -436,17 +440,14 @@ const CalendarConnectionStep: React.FC<{
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Check if calendar already connected
     checkExistingIntegration();
   }, [businessId]);
 
   useEffect(() => {
-    // Start polling when waiting for OAuth callback (only if provider is set)
     if (step === "connect" && !integrationId && provider) {
       pollingIntervalRef.current = setInterval(checkForNewIntegration, 2000);
     }
 
-    // Cleanup polling on unmount or when integration is found
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -457,8 +458,9 @@ const CalendarConnectionStep: React.FC<{
 
   const checkExistingIntegration = async () => {
     try {
+      // REFACTOR: Use API_ROUTES.ONBOARDING.CALENDAR_STATUS(businessId)
       const response = await fetch(
-        `${API_BASE}/onboarding/${businessId}/calendar-status`,
+        API_ROUTES.ONBOARDING.CALENDAR_STATUS(businessId),
         {
           headers: getAuthHeaders(),
         }
@@ -467,7 +469,6 @@ const CalendarConnectionStep: React.FC<{
 
       if (data.integrations && data.integrations.length > 0) {
         const integration = data.integrations[0];
-        // If already has calendars list, go to select step
         if (integration.provider_config?.calendar_list) {
           setIntegrationId(integration.id);
           setProvider(integration.provider);
@@ -481,12 +482,12 @@ const CalendarConnectionStep: React.FC<{
   };
 
   const checkForNewIntegration = async () => {
-    // Don't poll if provider isn't set yet
     if (!provider) return;
 
     try {
+      // REFACTOR: Use API_ROUTES.CALENDAR.CALLBACK_STATUS(provider, businessId)
       const response = await fetch(
-        `${API_BASE}/calendar/${provider}/callback-status/${businessId}`,
+        API_ROUTES.CALENDAR.CALLBACK_STATUS(provider, businessId),
         {
           headers: getAuthHeaders(),
         }
@@ -494,7 +495,6 @@ const CalendarConnectionStep: React.FC<{
       if (response.ok) {
         const data = await response.json();
         if (data.integration_id) {
-          // Stop polling
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
@@ -516,8 +516,9 @@ const CalendarConnectionStep: React.FC<{
     setProvider(calendarProvider);
 
     try {
+      // REFACTOR: Use API_ROUTES.CALENDAR.AUTHORIZE(calendarProvider, businessId)
       const response = await fetch(
-        `${API_BASE}/calendar/${calendarProvider}/authorize/${businessId}`,
+        API_ROUTES.CALENDAR.AUTHORIZE(calendarProvider, businessId),
         {
           method: "POST",
           headers: getAuthHeaders(),
@@ -559,9 +560,14 @@ const CalendarConnectionStep: React.FC<{
     setError("");
 
     try {
-      // Select the calendar within the integration
+      // REFACTOR: Use API_ROUTES.CALENDAR.SELECT_CALENDAR
+      const selectEndpoint = API_ROUTES.CALENDAR.SELECT_CALENDAR(
+        provider,
+        integrationId
+      );
+
       const selectResponse = await fetch(
-        `${API_BASE}/calendar/${provider}/${integrationId}/select-calendar?calendar_id=${encodeURIComponent(
+        `${selectEndpoint}?calendar_id=${encodeURIComponent(
           selectedCalendarId
         )}`,
         {
@@ -574,9 +580,9 @@ const CalendarConnectionStep: React.FC<{
         throw new Error("Failed to select calendar");
       }
 
-      // Set this integration as primary
+      // REFACTOR: Use API_ROUTES.ONBOARDING.SET_PRIMARY_CALENDAR
       const primaryResponse = await fetch(
-        `${API_BASE}/onboarding/${businessId}/primary-calendar/${integrationId}`,
+        API_ROUTES.ONBOARDING.SET_PRIMARY_CALENDAR(businessId, integrationId),
         {
           method: "PATCH",
           headers: getAuthHeaders(),
@@ -594,6 +600,8 @@ const CalendarConnectionStep: React.FC<{
       setLoading(false);
     }
   };
+
+  // ... (JSX for CalendarConnectionStep remains unchanged) ...
 
   if (step === "select") {
     return (
@@ -818,7 +826,8 @@ const OnboardingPage: React.FC = () => {
             </div>
           </div>
           <button
-            onClick={() => (window.location.href = "/dashboard")}
+            // REFACTOR: Use DASHBOARD_ROUTES.DASHBOARD
+            onClick={() => (window.location.href = DASHBOARD_ROUTES.DASHBOARD)}
             className="mt-8 px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
           >
             Go to Dashboard
@@ -830,6 +839,7 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      {/* ... (Main JSX structure remains unchanged) ... */}
       <div className="max-w-4xl mx-auto mb-12">
         <h1 className="text-3xl font-bold text-gray-800 text-center mb-2">
           Welcome to Your Business Setup

@@ -101,6 +101,27 @@ export const API_ROUTES = {
     SERVICES: (id: string) => `${API_BASE_URL}/businesses/${id}/services`,
     TEAM: (id: string) => `${API_BASE_URL}/businesses/${id}/team`,
   },
+
+  // Onboarding specific endpoints (used by the initial setup flow)
+  ONBOARDING: {
+    CREATE_BUSINESS: `${API_BASE_URL}/onboarding/business`,
+    BUSINESS_HOURS: (businessId: string) => 
+      `${API_BASE_URL}/onboarding/${businessId}/business-hours`,
+    CALENDAR_STATUS: (businessId: string) => 
+      `${API_BASE_URL}/onboarding/${businessId}/calendar-status`,
+    SET_PRIMARY_CALENDAR: (businessId: string, integrationId: string) => 
+      `${API_BASE_URL}/onboarding/${businessId}/primary-calendar/${integrationId}`,
+  },
+
+  // Calendar Integration specific endpoints
+  CALENDAR: {
+    AUTHORIZE: (provider: string, businessId: string) => 
+      `${API_BASE_URL}/calendar/${provider}/authorize/${businessId}`,
+    CALLBACK_STATUS: (provider: string, businessId: string) => 
+      `${API_BASE_URL}/calendar/${provider}/callback-status/${businessId}`,
+    SELECT_CALENDAR: (provider: string, integrationId: string) => 
+      `${API_BASE_URL}/calendar/${provider}/${integrationId}/select-calendar`,
+  },
   
   // Admin endpoints
   ADMIN: {
