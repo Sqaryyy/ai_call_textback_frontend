@@ -1,6 +1,7 @@
 "use client";
 
 // contexts/AuthContext.tsx
+// COOKIE-BASED VERSION
 
 import React, {
   createContext,
@@ -11,8 +12,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@/types/user";
-import { LoginResponse, SignUpResponse } from "@/types/auth";
-import { TokenManager } from "@/lib/auth/token-manager";
+import { SignUpResponse } from "@/types/auth";
 import { API_ROUTES, DASHBOARD_ROUTES, PUBLIC_ROUTES } from "@/config/routes";
 
 interface AuthContextType {
@@ -48,29 +48,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Initialize auth state on mount
-   * Check for existing tokens and fetch user data
+   * With httpOnly cookies, we just check /auth/me endpoint
    */
   useEffect(() => {
     const initAuth = async () => {
-      const token = TokenManager.getAccessToken();
-
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if token is expired
-      if (TokenManager.isAccessTokenExpired()) {
-        // TODO: Try to refresh token
-        TokenManager.clearTokens();
-        setIsLoading(false);
-        return;
-      }
-
-      // Fetch user data
       try {
+        // Check authentication by calling /me endpoint
+        // Cookies are automatically included with credentials: 'include'
         const response = await fetch(API_ROUTES.AUTH.ME, {
-          headers: TokenManager.getAuthHeader(),
+          credentials: "include", // Important: include cookies
         });
 
         if (response.ok) {
@@ -78,11 +64,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setUser(userData);
           setIsAuthenticated(true);
         } else {
-          TokenManager.clearTokens();
+          // Not authenticated or token expired
+          setUser(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
-        TokenManager.clearTokens();
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -93,15 +82,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Sign in user
+   * Backend sets httpOnly cookies automatically
    */
   const signIn = useCallback(
     async (email: string, password: string) => {
-      // Step 1: Call sign-in endpoint to get tokens
       const response = await fetch(API_ROUTES.AUTH.SIGN_IN, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: include cookies
         body: JSON.stringify({ email, password }),
       });
 
@@ -110,44 +100,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error(error.detail || "Login failed");
       }
 
-      const data = await response.json();
+      // Response no longer contains tokens - they're in httpOnly cookies
+      const userData = await response.json();
 
-      // Step 2: Store tokens
-      TokenManager.setTokens({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        token_type: data.token_type,
-      });
+      // Set user state
+      setUser(userData);
+      setIsAuthenticated(true);
 
-      // Step 3: Fetch complete user data from /me endpoint
-      try {
-        const userResponse = await fetch(API_ROUTES.AUTH.ME, {
-          headers: TokenManager.getAuthHeader(),
-        });
-
-        if (!userResponse.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        const userData = await userResponse.json();
-
-        // Step 4: Set user state with complete data
-        setUser(userData);
-        setIsAuthenticated(true);
-
-        // Step 5: Navigate to dashboard (user data is now loaded)
-        router.push(DASHBOARD_ROUTES.DASHBOARD);
-      } catch (error) {
-        // If fetching user data fails, clean up tokens
-        TokenManager.clearTokens();
-        throw error;
-      }
+      // Navigate to dashboard
+      router.push(DASHBOARD_ROUTES.DASHBOARD);
     },
     [router]
   );
 
   /**
    * Sign up user
+   * Backend sets httpOnly cookies automatically
    */
   const signUp = useCallback(
     async (
@@ -161,6 +129,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: include cookies
         body: JSON.stringify({
           email,
           password,
@@ -176,32 +145,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const data: SignUpResponse = await response.json();
 
-      // Store tokens
-      TokenManager.setTokens({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        token_type: data.token_type,
-      });
-
-      // Fetch complete user data from /me endpoint
+      // Fetch user data (cookies are already set by backend)
       try {
         const userResponse = await fetch(API_ROUTES.AUTH.ME, {
-          headers: TokenManager.getAuthHeader(),
+          credentials: "include",
         });
 
         if (userResponse.ok) {
           const userData = await userResponse.json();
           setUser(userData);
           setIsAuthenticated(true);
-        } else {
-          // Fallback: use data from signup response if /me fails
-          setUser(data.user);
-          setIsAuthenticated(true);
         }
       } catch (error) {
-        // Fallback: use data from signup response
-        setUser(data.user);
-        setIsAuthenticated(true);
+        console.error("Error fetching user after signup:", error);
       }
 
       return data;
@@ -211,19 +167,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Sign out user
+   * Backend clears httpOnly cookies
    */
   const signOut = useCallback(async () => {
     try {
-      // Call logout endpoint to revoke tokens
+      // Call logout endpoint to clear cookies
       await fetch(API_ROUTES.AUTH.SIGN_OUT, {
         method: "POST",
-        headers: TokenManager.getAuthHeader(),
+        credentials: "include", // Important: include cookies
       });
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {
-      // Clear local state regardless of API call result
-      TokenManager.clearTokens();
+      // Clear local state
       setUser(null);
       setIsAuthenticated(false);
       router.push(PUBLIC_ROUTES.SIGN_IN);
@@ -238,7 +194,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     try {
       const response = await fetch(API_ROUTES.AUTH.ME, {
-        headers: TokenManager.getAuthHeader(),
+        credentials: "include",
       });
 
       if (response.ok) {

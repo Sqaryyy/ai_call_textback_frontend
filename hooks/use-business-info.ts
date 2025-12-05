@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { TokenManager } from '@/lib/auth/token-manager';
+import { api } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -124,41 +124,10 @@ interface UseBusinessReturn {
 }
 
 // ============================================================================
-// Utility Function
-// ============================================================================
-
-async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...TokenManager.getAuthHeader(),
-      ...(options.headers || {}),
-    },
-    credentials: 'include',
-    ...options,
-  });
-
-  if (!res.ok) {
-    let msg = `Request failed with status ${res.status}`;
-    try {
-      const data = await res.json();
-      msg = data.detail || data.message || msg;
-    } catch {
-      // ignore JSON parse error
-    }
-    throw new Error(msg);
-  }
-
-  return res.json();
-}
-
-// ============================================================================
 // Hook Implementation
 // ============================================================================
 
 export function useBusinessInfo(): UseBusinessReturn {
-  const BASE_API_URL = 'http://localhost:8000/api/v1/dashboard/business';
-
   const [business, setBusiness] = useState<Business | null>(null);
   const [knowledgeStats, setKnowledgeStats] = useState<KnowledgeStats | null>(null);
   const [lastUpdateResponse, setLastUpdateResponse] = useState<BusinessUpdateResponse | null>(null);
@@ -168,18 +137,10 @@ export function useBusinessInfo(): UseBusinessReturn {
   const clearError = useCallback(() => setError(null), []);
 
   const handleError = useCallback((err: any, defaultMessage: string) => {
-    const message = err.message || defaultMessage;
+    const message = err.response?.data?.detail || err.message || defaultMessage;
     setError(message);
     console.error(defaultMessage, err);
     throw new Error(message);
-  }, []);
-
-  const callApi = useCallback(async <T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<T> => {
-    const fullUrl = `${BASE_API_URL}${path}`;
-    return await fetchJSON<T>(fullUrl, options);
   }, []);
 
   // ============================================================================
@@ -191,7 +152,8 @@ export function useBusinessInfo(): UseBusinessReturn {
     setError(null);
 
     try {
-      const data = await callApi<Business>('');
+      const response = await api.get('/dashboard/business');
+      const data = response.data;
       setBusiness(data);
       return data;
     } catch (err: any) {
@@ -200,7 +162,7 @@ export function useBusinessInfo(): UseBusinessReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   // ============================================================================
   // UPDATE Business
@@ -211,21 +173,19 @@ export function useBusinessInfo(): UseBusinessReturn {
     setError(null);
 
     try {
-      const response = await callApi<BusinessUpdateResponse>('', {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      });
+      const response = await api.put('/dashboard/business', updates);
+      const data = response.data;
 
-      setBusiness(response.business);
-      setLastUpdateResponse(response);
-      return response;
+      setBusiness(data.business);
+      setLastUpdateResponse(data);
+      return data;
     } catch (err: any) {
       handleError(err, 'Failed to update business');
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   // ============================================================================
   // REINDEX Knowledge
@@ -236,19 +196,21 @@ export function useBusinessInfo(): UseBusinessReturn {
     setError(null);
 
     try {
-      const query = force ? '?force=true' : '';
-      const response = await callApi<ManualReindexResponse>(`/knowledge/reindex${query}`, {
-        method: 'POST',
-      });
+      const response = await api.post(
+        '/dashboard/business/knowledge/reindex',
+        {},
+        { params: { force } }
+      );
+      const data = response.data;
 
-      return response;
+      return data;
     } catch (err: any) {
       handleError(err, 'Failed to reindex knowledge');
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   // ============================================================================
   // GET Knowledge Stats
@@ -259,7 +221,8 @@ export function useBusinessInfo(): UseBusinessReturn {
     setError(null);
 
     try {
-      const stats = await callApi<KnowledgeStats>('/knowledge/stats');
+      const response = await api.get('/dashboard/business/knowledge/stats');
+      const stats = response.data;
       setKnowledgeStats(stats);
       return stats;
     } catch (err: any) {
@@ -268,7 +231,7 @@ export function useBusinessInfo(): UseBusinessReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   // ============================================================================
   // Refresh (reload all data)

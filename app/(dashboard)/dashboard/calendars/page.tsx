@@ -35,6 +35,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { api } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 type IntegrationSetupDialog = {
   open: boolean;
@@ -45,6 +47,7 @@ type IntegrationSetupDialog = {
 };
 
 export default function CalendarPage() {
+  const queryClient = useQueryClient();
   const { activeBusiness } = useBusiness();
   const {
     integrations,
@@ -163,6 +166,38 @@ export default function CalendarPage() {
     setPollInterval(interval);
   };
 
+  const markOnboardingStepComplete = async (
+    stepId: string = "calendar_connection"
+  ) => {
+    if (!activeBusiness) return;
+
+    try {
+      console.log(
+        `📋 [CALENDAR PAGE] Marking onboarding step complete: ${stepId}`
+      );
+      await api.post(
+        `/v1/dashboard/businesses/${activeBusiness.id}/onboarding/complete`,
+        {
+          step_id: stepId,
+        }
+      );
+      console.log(
+        `✅ [CALENDAR PAGE] Onboarding step marked complete: ${stepId}`
+      );
+
+      // Add this: Invalidate the onboarding query to trigger a refetch
+      queryClient.invalidateQueries({
+        queryKey: ["onboarding", activeBusiness.id],
+      });
+    } catch (err: any) {
+      console.error(
+        `❌ [CALENDAR PAGE] Failed to mark onboarding step complete:`,
+        err
+      );
+    }
+  };
+
+  // Update the handleSelectCalendar function to include the onboarding step:
   const handleSelectCalendar = async () => {
     if (!setupDialog.integrationId || !selectedCalendar) return;
 
@@ -177,6 +212,9 @@ export default function CalendarPage() {
           selectedCalendar
         );
       }
+
+      // Mark onboarding step as complete
+      await markOnboardingStepComplete("calendar_connection");
 
       // Close dialog and refresh
       setSetupDialog({ open: false, provider: null, step: "initial" });
@@ -225,6 +263,9 @@ export default function CalendarPage() {
         setupDialog.integrationId,
         selectedCalendar
       );
+
+      // Mark onboarding step as complete
+      await markOnboardingStepComplete("calendar_connection");
 
       setSetupDialog({ open: false, provider: null, step: "initial" });
       setSelectedCalendar("");

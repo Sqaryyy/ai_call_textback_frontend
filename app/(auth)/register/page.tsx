@@ -287,7 +287,7 @@ const SignupPage: React.FC = () => {
           <CardFooter>
             <Button
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              onClick={() => (window.location.href = "/sign-in")}
+              onClick={() => (window.location.href = "/signin")}
             >
               Continue to Login
             </Button>

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { TokenManager } from '@/lib/auth/token-manager';
+import { api } from '@/lib/api';
 
 export interface BusinessInvite {
   id: string;
@@ -78,34 +78,7 @@ interface UseInvitesReturn {
   clearError: () => void;
 }
 
-async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...TokenManager.getAuthHeader(),
-      ...(options.headers || {}),
-    },
-    credentials: 'include',
-    ...options,
-  });
-
-  if (!res.ok) {
-    let msg = `Request failed with status ${res.status}`;
-    try {
-      const data = await res.json();
-      msg = data.detail || data.message || msg;
-    } catch {
-      // ignore JSON parse error
-    }
-    throw new Error(msg);
-  }
-
-  return res.json();
-}
-
 export function useInvites(): UseInvitesReturn {
-  const BASE_API_URL = 'http://localhost:8002/api/v1/dashboard/business-invites';
-
   const [invites, setInvites] = useState<BusinessInvite[]>([]);
   const [stats, setStats] = useState<InviteStats | null>(null);
   const [currentInvite, setCurrentInvite] = useState<BusinessInvite | null>(null);
@@ -118,17 +91,9 @@ export function useInvites(): UseInvitesReturn {
   const clearError = useCallback(() => setError(null), []);
 
   const handleError = useCallback((err: any, defaultMessage: string) => {
-    const message = err.message || defaultMessage;
+    const message = err.response?.data?.detail || err.message || defaultMessage;
     setError(message);
     throw new Error(message);
-  }, []);
-
-  const callApi = useCallback(async <T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<T> => {
-    const fullUrl = `${BASE_API_URL}${path}`;
-    return await fetchJSON<T>(fullUrl, options);
   }, []);
 
   const createInvite = useCallback(async (businessId: string, data: CreateInviteRequest) => {
@@ -136,19 +101,17 @@ export function useInvites(): UseInvitesReturn {
     setError(null);
 
     try {
-      const invite = await callApi<BusinessInvite>(
-        `/${businessId}/invites`,
+      const response = await api.post(
+        `/dashboard/business-invites/${businessId}/invites`,
         {
-          method: 'POST',
-          body: JSON.stringify({
-            email: data.email || null,
-            role: data.role,
-            max_uses: data.max_uses || 1,
-            expires_in_days: data.expires_in_days || 7,
-          }),
+          email: data.email || null,
+          role: data.role,
+          max_uses: data.max_uses || 1,
+          expires_in_days: data.expires_in_days || 7,
         }
       );
 
+      const invite = response.data;
       setInvites((prev) => [invite, ...prev]);
       return invite;
     } catch (err: any) {
@@ -157,7 +120,7 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   const listInvites = useCallback(async (businessId: string, includeInactive = false) => {
     setIsLoading(true);
@@ -165,8 +128,12 @@ export function useInvites(): UseInvitesReturn {
     setLastBusinessId(businessId);
 
     try {
-      const query = includeInactive ? '?include_inactive=true' : '';
-      const data = await callApi<BusinessInvite[]>(`/${businessId}/invites${query}`);
+      const response = await api.get(
+        `/dashboard/business-invites/${businessId}/invites`,
+        { params: { include_inactive: includeInactive } }
+      );
+
+      const data = response.data;
       setInvites(data);
       return data;
     } catch (err: any) {
@@ -175,13 +142,17 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   const getInvite = useCallback(async (businessId: string, inviteId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const invite = await callApi<BusinessInvite>(`/${businessId}/invites/${inviteId}`);
+      const response = await api.get(
+        `/dashboard/business-invites/${businessId}/invites/${inviteId}`
+      );
+
+      const invite = response.data;
       setCurrentInvite(invite);
       return invite;
     } catch (err: any) {
@@ -190,13 +161,17 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   const getStats = useCallback(async (businessId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await callApi<InviteStats>(`/${businessId}/invites/stats`);
+      const response = await api.get(
+        `/dashboard/business-invites/${businessId}/invites/stats`
+      );
+
+      const data = response.data;
       setStats(data);
       return data;
     } catch (err: any) {
@@ -205,13 +180,17 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   const listUsers = useCallback(async (businessId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await callApi<BusinessUsersList>(`/${businessId}/users`);
+      const response = await api.get(
+        `/dashboard/business-invites/${businessId}/users`
+      );
+
+      const data = response.data;
       setBusinessUsers(data.users);
       setTotalUsers(data.total_users);
       return data;
@@ -221,13 +200,15 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, handleError]);
+  }, [handleError]);
 
   const revokeInvite = useCallback(async (businessId: string, inviteId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      await callApi(`/${businessId}/invites/${inviteId}/revoke`, { method: 'PATCH' });
+      await api.patch(
+        `/dashboard/business-invites/${businessId}/invites/${inviteId}/revoke`
+      );
 
       setInvites((prev) =>
         prev.map((inv) =>
@@ -243,17 +224,18 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, currentInvite, handleError]);
+  }, [currentInvite, handleError]);
 
   const extendInvite = useCallback(async (businessId: string, inviteId: string, days: number) => {
     setIsLoading(true);
     setError(null);
     try {
-      const updated = await callApi<BusinessInvite>(
-        `/${businessId}/invites/${inviteId}/extend`,
-        { method: 'PATCH', body: JSON.stringify({ additional_days: days }) }
+      const response = await api.patch(
+        `/dashboard/business-invites/${businessId}/invites/${inviteId}/extend`,
+        { additional_days: days }
       );
 
+      const updated = response.data;
       setInvites((prev) => prev.map((inv) => (inv.id === inviteId ? updated : inv)));
       if (currentInvite?.id === inviteId) setCurrentInvite(updated);
       return updated;
@@ -263,13 +245,15 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, currentInvite, handleError]);
+  }, [currentInvite, handleError]);
 
   const deleteInvite = useCallback(async (businessId: string, inviteId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      await callApi(`/${businessId}/invites/${inviteId}`, { method: 'DELETE' });
+      await api.delete(
+        `/dashboard/business-invites/${businessId}/invites/${inviteId}`
+      );
 
       setInvites((prev) => prev.filter((inv) => inv.id !== inviteId));
       if (currentInvite?.id === inviteId) setCurrentInvite(null);
@@ -279,17 +263,17 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, currentInvite, handleError]);
+  }, [currentInvite, handleError]);
 
   const cleanupExpired = useCallback(async (businessId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await callApi<{ message: string; details: { expired_invites_deleted: number } }>(
-        `/${businessId}/invites/cleanup-expired`,
-        { method: 'POST' }
+      const response = await api.post(
+        `/dashboard/business-invites/${businessId}/invites/cleanup-expired`
       );
 
+      const result = response.data;
       await listInvites(businessId);
       return result.details.expired_invites_deleted;
     } catch (err: any) {
@@ -298,7 +282,7 @@ export function useInvites(): UseInvitesReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [callApi, listInvites, handleError]);
+  }, [listInvites, handleError]);
 
   const copyInviteUrl = useCallback(async (inviteUrl: string) => {
     try {

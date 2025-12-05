@@ -21,6 +21,7 @@ export const PUBLIC_ROUTES = {
  * Protected dashboard routes (authentication required)
  */
 export const DASHBOARD_ROUTES = {
+  BUSINESS: "/dashboard/business",
   BUSINESS_INFO: "/dashboard/business-info",
   DASHBOARD: "/dashboard",
   ANALYTICS: "/dashboard/analytics",
@@ -104,7 +105,7 @@ export const API_ROUTES = {
 
   // Onboarding specific endpoints (used by the initial setup flow)
   ONBOARDING: {
-    CREATE_BUSINESS: `${API_BASE_URL}/onboarding/business`,
+    CREATE_BUSINESS: `${API_BASE_URL}/dashboard/onboarding/business`,
     BUSINESS_HOURS: (businessId: string) => 
       `${API_BASE_URL}/onboarding/${businessId}/business-hours`,
     CALENDAR_STATUS: (businessId: string) => 

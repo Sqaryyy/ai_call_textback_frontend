@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import { Business } from "@/types/business";
 import { User } from "@/types/user";
-import { TokenManager } from "@/lib/auth/token-manager";
+import { api } from "@/lib/api";
 
 interface BusinessContextType {
   // Current active business
@@ -44,7 +44,7 @@ export function BusinessProvider({ children, user }: BusinessProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   /**
-   * Fetch all businesses from the backend
+   * Fetch all businesses from the backend using axios client
    */
   const fetchBusinesses = useCallback(async () => {
     if (!user) return;
@@ -52,24 +52,11 @@ export function BusinessProvider({ children, user }: BusinessProviderProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8001/api/v1/dashboard/onboarding/my-businesses",
-        {
-          headers: {
-            ...TokenManager.getAuthHeader(),
-            "Content-Type": "application/json",
-          },
-        }
+      const response = await api.get<{ businesses: Business[] }>(
+        "/v1/dashboard/onboarding/my-businesses"
       );
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to fetch businesses");
-      }
-
-      const data = await response.json();
-      const fetchedBusinesses = data.businesses || [];
-
+      const fetchedBusinesses = response.data.businesses || [];
       setBusinesses(fetchedBusinesses);
 
       // Set active business from localStorage or default to first business

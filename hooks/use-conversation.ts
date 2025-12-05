@@ -1,9 +1,6 @@
 import { useCallback } from 'react';
 import { useConversationContext } from '@/contexts/ConversationContext';
-import { TokenManager } from '@/lib/auth/token-manager';
-
-// Adjust this base URL to match your API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002/api/v1';
+import { api } from '@/lib/api';
 
 interface ListConversationsParams {
   start_date?: string;
@@ -30,16 +27,6 @@ interface GetStatsParams {
   start_date?: string;
   end_date?: string;
 }
-
-// Helper to build query string
-const buildQueryString = (params?: Record<string, any>): string => {
-  if (!params) return '';
-  const filtered = Object.entries(params)
-    .filter(([_, value]) => value !== undefined && value !== null)
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-    .join('&');
-  return filtered ? `?${filtered}` : '';
-};
 
 export const useConversations = () => {
   const {
@@ -68,29 +55,16 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const queryString = buildQueryString(params);
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations${queryString}`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch conversations');
-      }
-
-      const data = await response.json();
+      const response = await api.get('/dashboard/conversations', { params });
+      const data = response.data;
       
-      // ✅ FIX: Handle both array and object responses
-      // If API returns {conversations: [...], total: N}, extract the array
+      // ✅ Handle both array and object responses
       const conversationsArray = Array.isArray(data) ? data : data.conversations || [];
       
       setConversations(conversationsArray);
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to fetch conversations';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to fetch conversations';
       setError(errorMsg);
       console.error('Fetch conversations error:', err);
       throw err;
@@ -107,19 +81,9 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations/${conversationId}`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch conversation');
-      }
-
-      const data = await response.json();
+      const response = await api.get(`/dashboard/conversations/${conversationId}`);
+      const data = response.data;
+      
       setSelectedConversation(data);
       
       // Also update in conversations list if it exists
@@ -127,7 +91,7 @@ export const useConversations = () => {
       
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to fetch conversation';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to fetch conversation';
       setError(errorMsg);
       console.error('Fetch conversation error:', err);
       throw err;
@@ -147,28 +111,19 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const queryString = buildQueryString(params);
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations/${conversationId}/messages${queryString}`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
+      const response = await api.get(
+        `/dashboard/conversations/${conversationId}/messages`,
+        { params }
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch messages');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       
-      // ✅ FIX: Handle both array and object responses
+      // ✅ Handle both array and object responses
       const messagesArray = Array.isArray(data) ? data : data.messages || [];
       
       setMessages(messagesArray);
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to fetch messages';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to fetch messages';
       setError(errorMsg);
       console.error('Fetch messages error:', err);
       throw err;
@@ -185,28 +140,16 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const queryString = buildQueryString(params);
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations/search/by-phone${queryString}`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to search conversations');
-      }
-
-      const data = await response.json();
+      const response = await api.get('/dashboard/conversations/search/by-phone', { params });
+      const data = response.data;
       
-      // ✅ FIX: Handle both array and object responses
+      // ✅ Handle both array and object responses
       const conversationsArray = Array.isArray(data) ? data : data.conversations || [];
       
       setConversations(conversationsArray);
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to search conversations';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to search conversations';
       setError(errorMsg);
       console.error('Search error:', err);
       throw err;
@@ -223,24 +166,13 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const queryString = buildQueryString(params);
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations/stats/summary${queryString}`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch stats');
-      }
-
-      const data = await response.json();
+      const response = await api.get('/dashboard/conversations/stats/summary', { params });
+      const data = response.data;
+      
       setStats(data);
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to fetch stats';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to fetch stats';
       setError(errorMsg);
       console.error('Fetch stats error:', err);
       throw err;
@@ -257,22 +189,12 @@ export const useConversations = () => {
     setError(null);
     
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/dashboard/conversations/${conversationId}/context`,
-        {
-          headers: TokenManager.getAuthHeader(),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch conversation context');
-      }
-
-      const data = await response.json();
+      const response = await api.get(`/dashboard/conversations/${conversationId}/context`);
+      const data = response.data;
+      
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to fetch conversation context';
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to fetch conversation context';
       setError(errorMsg);
       console.error('Fetch context error:', err);
       throw err;

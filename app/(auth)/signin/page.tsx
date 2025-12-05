@@ -223,15 +223,6 @@ const SignInPage: React.FC = () => {
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
-          <div className="text-sm text-center text-gray-600">
-            Don't have an account?{" "}
-            <a
-              href="/sign-up"
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Create one
-            </a>
-          </div>
           <p className="text-xs text-center text-gray-500">
             Protected by industry-standard encryption
           </p>

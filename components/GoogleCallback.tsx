@@ -1,22 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
-import { AlertCircle, CheckCircle, Loader2, Calendar } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { TokenManager } from "@/lib/auth/token-manager";
-
-interface CalendarItem {
-  id: string;
-  name: string;
-}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function GoogleCallback() {
   const [status, setStatus] = useState("processing");
   const [message, setMessage] = useState("Processing authentication...");
-  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
-  const [integrationId, setIntegrationId] = useState<string | null>(null);
-  const [selectedCalendar, setSelectedCalendar] = useState("");
-  const [settingCalendar, setSettingCalendar] = useState(false);
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -40,7 +31,7 @@ export default function GoogleCallback() {
 
         // Call the backend callback endpoint with credentials
         const response = await fetch(
-          `${API_BASE_URL}/api/v1/dashboard/calendar/google/callback?code=${encodeURIComponent(
+          `${API_BASE_URL}/dashboard/calendar/google/callback?code=${encodeURIComponent(
             code
           )}&state=${encodeURIComponent(state)}`,
           {
@@ -57,12 +48,22 @@ export default function GoogleCallback() {
           throw new Error(`Server responded with status: ${response.status}`);
         }
 
-        // Backend returns HTML, but we need to poll for status
-        setStatus("polling");
-        setMessage("Checking integration status...");
+        setStatus("success");
+        setMessage("Calendar integration connected successfully!");
 
-        // Start polling for callback status
-        await pollCallbackStatus();
+        // Notify parent window that setup is complete
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: "calendar-integration-complete",
+              provider: "google",
+            },
+            window.location.origin
+          );
+        }
+
+        // Close the window after a short delay
+        setTimeout(() => window.close(), 1500);
       } catch (err) {
         setStatus("error");
         setMessage(
@@ -73,180 +74,20 @@ export default function GoogleCallback() {
       }
     };
 
-    const pollCallbackStatus = async () => {
-      let attempts = 0;
-      const maxAttempts = 30; // 30 attempts = 30 seconds
-
-      const poll = async () => {
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/api/v1/dashboard/calendar/google/callback-status`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                ...TokenManager.getAuthHeader(),
-              },
-              credentials: "include",
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error(`Failed to check status: ${response.status}`);
-          }
-
-          const data = await response.json();
-
-          if (data.success && data.calendars && data.calendars.length > 0) {
-            setStatus("select-calendar");
-            setCalendars(data.calendars);
-            setIntegrationId(data.integration_id);
-            setMessage("Select the calendar you want to use for appointments");
-            setSelectedCalendar(data.calendars[0].id);
-            return;
-          }
-
-          // If not successful yet, try again
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(poll, 1000); // Poll every 1 second
-          } else {
-            throw new Error("Timeout waiting for callback to complete");
-          }
-        } catch (err) {
-          setStatus("error");
-          setMessage(
-            `Error: ${
-              err instanceof Error ? err.message : "Failed to check status"
-            }`
-          );
-        }
-      };
-
-      poll();
-    };
-
     handleCallback();
   }, []);
-
-  const handleSelectCalendar = async () => {
-    if (!selectedCalendar || !integrationId) return;
-
-    setSettingCalendar(true);
-    try {
-      // Select the calendar
-      const selectResponse = await fetch(
-        `${API_BASE_URL}/api/v1/dashboard/calendar/google/${integrationId}/select-calendar?calendar_id=${encodeURIComponent(
-          selectedCalendar
-        )}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...TokenManager.getAuthHeader(),
-          },
-          credentials: "include",
-        }
-      );
-
-      if (!selectResponse.ok) {
-        throw new Error(`Failed to select calendar: ${selectResponse.status}`);
-      }
-
-      const data = await selectResponse.json();
-
-      if (data.success) {
-        setStatus("success");
-        setMessage("Calendar successfully configured!");
-
-        // Notify parent window that setup is complete
-        if (window.opener) {
-          window.opener.postMessage(
-            {
-              type: "calendar-connected",
-              provider: "google",
-              integrationId,
-            },
-            window.location.origin
-          );
-        }
-
-        setTimeout(() => window.close(), 2000);
-      }
-    } catch (err) {
-      setStatus("error");
-      setMessage(
-        `Error: ${
-          err instanceof Error ? err.message : "Failed to configure calendar"
-        }`
-      );
-    } finally {
-      setSettingCalendar(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
         <div className="flex flex-col items-center text-center">
-          {(status === "processing" || status === "polling") && (
+          {status === "processing" && (
             <>
               <Loader2 className="w-16 h-16 text-blue-600 animate-spin mb-4" />
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
                 Connecting...
               </h2>
               <p className="text-gray-600">{message}</p>
-            </>
-          )}
-
-          {status === "select-calendar" && (
-            <>
-              <Calendar className="w-16 h-16 text-blue-600 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                Select Your Calendar
-              </h2>
-              <p className="text-gray-600 mb-6">{message}</p>
-
-              <div className="w-full mb-6">
-                <label
-                  htmlFor="calendar-select"
-                  className="block text-left text-sm font-medium text-gray-700 mb-2"
-                >
-                  Choose a calendar:
-                </label>
-                <select
-                  id="calendar-select"
-                  value={selectedCalendar}
-                  onChange={(e) => setSelectedCalendar(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-left text-gray-800 bg-white"
-                  disabled={settingCalendar}
-                >
-                  {calendars.map((cal) => (
-                    <option
-                      key={cal.id}
-                      value={cal.id}
-                      className="text-gray-800"
-                    >
-                      {cal.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={handleSelectCalendar}
-                disabled={settingCalendar}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
-              >
-                {settingCalendar ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Configuring...
-                  </>
-                ) : (
-                  "Continue"
-                )}
-              </button>
             </>
           )}
 
