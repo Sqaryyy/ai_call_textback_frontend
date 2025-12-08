@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useBusiness } from "@/hooks/use-business";
-import { useBusinessInfo } from "@/hooks/use-business-info";
+import { useBusinessInfo } from "@/hooks/use-buisiness-info/use-business-info";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

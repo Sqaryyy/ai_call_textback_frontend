@@ -169,7 +169,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<MetricsSummary>(
-        '/v1/dashboard/metrics/summary',
+        '/dashboard/metrics/summary',
         { params }
       );
       setSummary(response.data);
@@ -197,7 +197,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<ConversationsResponse>(
-        '/v1/dashboard/metrics/conversations',
+        '/dashboard/metrics/conversations',
         { params }
       );
       setConversations(response.data);
@@ -225,7 +225,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<BookingsResponse>(
-        '/v1/dashboard/metrics/bookings',
+        '/dashboard/metrics/bookings',
         { params }
       );
       setBookings(response.data);
@@ -248,7 +248,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<DailyBreakdownResponse>(
-        '/v1/dashboard/metrics/daily-breakdown',
+        '/dashboard/metrics/daily-breakdown',
         { params }
       );
       setDailyBreakdown(response.data);
@@ -271,7 +271,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<FunnelResponse>(
-        '/v1/dashboard/metrics/funnel',
+        '/dashboard/metrics/funnel',
         { params }
       );
       setFunnel(response.data);
@@ -294,7 +294,7 @@ export function useMetrics(): UseMetricsReturn {
       if (month !== undefined) params.month = month;
 
       const response = await api.get<DropoffAnalysisResponse>(
-        '/v1/dashboard/metrics/dropoff-analysis',
+        '/dashboard/metrics/dropoff-analysis',
         { params }
       );
       setDropoffAnalysis(response.data);

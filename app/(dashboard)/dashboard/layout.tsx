@@ -30,7 +30,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     queryFn: async () => {
       if (!activeBusiness?.id) return null;
       const response = await api.get(
-        `/v1/dashboard/businesses/${activeBusiness.id}/onboarding`
+        `/dashboard/businesses/${activeBusiness.id}/onboarding`
       );
       return response.data;
     },

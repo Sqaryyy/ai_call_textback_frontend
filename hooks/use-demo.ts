@@ -55,7 +55,7 @@ export function useDemo() {
   } = useQuery({
     queryKey: ["demo-sessions"],
     queryFn: async () => {
-      const response = await api.get("/v1/dashboard/demo/sessions");
+      const response = await api.get("/dashboard/demo/sessions");
       return response.data;
     },
   });
@@ -70,7 +70,7 @@ export function useDemo() {
     queryFn: async () => {
       if (!activeSessionId) return null;
       const response = await api.get(
-        `/v1/dashboard/demo/conversation/${activeSessionId}`
+        `/dashboard/demo/conversation/${activeSessionId}`
       );
       return response.data as ConversationResponse;
     },
@@ -81,7 +81,7 @@ export function useDemo() {
   const startDemoMutation = useMutation({
     mutationFn: async (businessId?: string) => {
       const response = await api.post<StartDemoResponse>(
-        "/v1/dashboard/demo/start",
+        "/dashboard/demo/start",
         { business_id: businessId }
       );
       return response.data;
@@ -102,7 +102,7 @@ export function useDemo() {
       message: string;
     }) => {
       const response = await api.post<SendMessageResponse>(
-        "/v1/dashboard/demo/message",
+        "/dashboard/demo/message",
         {
           session_id: sessionId,
           message,
@@ -120,7 +120,7 @@ export function useDemo() {
   // Delete session
   const deleteSessionMutation = useMutation({
     mutationFn: async (sessionId: string) => {
-      await api.delete(`/v1/dashboard/demo/sessions/${sessionId}`);
+      await api.delete(`/dashboard/demo/sessions/${sessionId}`);
     },
     onSuccess: (_, deletedSessionId) => {
       if (activeSessionId === deletedSessionId) {
@@ -134,7 +134,7 @@ export function useDemo() {
   const getAnalytics = useCallback(
     async (sessionId: string) => {
       const response = await api.get(
-        `/v1/dashboard/demo/analytics/${sessionId}`
+        `/dashboard/demo/analytics/${sessionId}`
       );
       return response.data;
     },

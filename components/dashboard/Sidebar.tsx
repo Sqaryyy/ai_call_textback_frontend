@@ -30,19 +30,9 @@ const navigation: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    name: "Business",
-    href: DASHBOARD_ROUTES.BUSINESS,
-    icon: Store,
-  },
-  {
     name: "Business Info",
     href: DASHBOARD_ROUTES.BUSINESS_INFO,
     icon: Store,
-  },
-  {
-    name: "Analytics",
-    href: DASHBOARD_ROUTES.ANALYTICS,
-    icon: BarChart3,
   },
   {
     name: "Conversations",

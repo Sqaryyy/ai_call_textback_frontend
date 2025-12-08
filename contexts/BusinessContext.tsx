@@ -53,7 +53,7 @@ export function BusinessProvider({ children, user }: BusinessProviderProps) {
 
     try {
       const response = await api.get<{ businesses: Business[] }>(
-        "/v1/dashboard/onboarding/my-businesses"
+        "/dashboard/onboarding/my-businesses"
       );
 
       const fetchedBusinesses = response.data.businesses || [];

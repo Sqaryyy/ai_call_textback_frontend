@@ -127,7 +127,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.post<{ authorization_url: string }>(
-        '/v1/dashboard/calendar/google/authorize'
+        '/dashboard/calendar/google/authorize'
       );
       return response.data.authorization_url;
     } catch (err: any) {
@@ -144,7 +144,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<OAuthCallbackStatus>(
-        '/v1/dashboard/calendar/google/callback-status'
+        '/dashboard/calendar/google/callback-status'
       );
       return response.data;
     } catch (err: any) {
@@ -161,7 +161,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       await api.patch(
-        `/v1/dashboard/calendar/google/${integrationId}/select-calendar`,
+        `/dashboard/calendar/google/${integrationId}/select-calendar`,
         {},
         { params: { calendar_id: calendarId } }
       );
@@ -181,7 +181,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.post<{ authorization_url: string }>(
-        '/v1/dashboard/calendar/outlook/authorize'
+        '/dashboard/calendar/outlook/authorize'
       );
       return response.data.authorization_url;
     } catch (err: any) {
@@ -198,7 +198,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<OAuthCallbackStatus>(
-        '/v1/dashboard/calendar/outlook/callback-status'
+        '/dashboard/calendar/outlook/callback-status'
       );
       return response.data;
     } catch (err: any) {
@@ -215,7 +215,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       await api.patch(
-        `/v1/dashboard/calendar/outlook/${integrationId}/select-calendar`,
+        `/dashboard/calendar/outlook/${integrationId}/select-calendar`,
         {},
         { params: { calendar_id: calendarId } }
       );
@@ -235,7 +235,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.post<CalendlySetupResponse>(
-        '/v1/dashboard/calendar/calendly/setup',
+        '/dashboard/calendar/calendly/setup',
         {},
         { params: { personal_access_token: personalAccessToken } }
       );
@@ -254,7 +254,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       await api.patch(
-        `/v1/dashboard/calendar/calendly/${integrationId}/select-event-type`,
+        `/dashboard/calendar/calendly/${integrationId}/select-event-type`,
         {},
         { params: { event_type_uri: eventTypeUri } }
       );
@@ -274,7 +274,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<{ integrations: CalendarIntegration[] }>(
-        '/v1/dashboard/calendar/integrations'
+        '/dashboard/calendar/integrations'
       );
       setIntegrations(response.data.integrations);
       return response.data.integrations;
@@ -291,7 +291,7 @@ export function useCalendar(): UseCalendarReturn {
     setError(null);
 
     try {
-      await api.delete(`/v1/dashboard/calendar/integrations/${integrationId}`);
+      await api.delete(`/dashboard/calendar/integrations/${integrationId}`);
       setIntegrations((prev) => prev.filter((int) => int.id !== integrationId));
     } catch (err: any) {
       handleError(err, 'Failed to remove calendar integration');
@@ -314,7 +314,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<AvailabilityResponse>(
-        '/v1/dashboard/calendar/availability',
+        '/dashboard/calendar/availability',
         {
           params: {
             start_date: startDate,
@@ -340,7 +340,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<NextAvailableResponse>(
-        '/v1/dashboard/calendar/availability/next-available',
+        '/dashboard/calendar/availability/next-available',
         {
           params: {
             duration_minutes: durationMinutes,
@@ -364,7 +364,7 @@ export function useCalendar(): UseCalendarReturn {
 
     try {
       const response = await api.get<AvailabilitySummary>(
-        '/v1/dashboard/calendar/availability/summary',
+        '/dashboard/calendar/availability/summary',
         {
           params: { date },
         }

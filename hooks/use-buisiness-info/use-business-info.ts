@@ -1,5 +1,9 @@
 import { useState, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { useServices } from './use-services';
+import { useDocuments } from './use-documents';
+import type { Service, CreateServiceRequest } from './use-services';
+import type { Document, CreateDocumentRequest } from './use-documents';
 
 // ============================================================================
 // Types
@@ -103,24 +107,68 @@ export interface ManualReindexResponse {
   duration_ms?: number;
 }
 
+export interface OnboardingCompleteRequest {
+  step_id: string;
+}
+
+export interface OnboardingCompleteResponse {
+  success: boolean;
+  message: string;
+}
+
+// Re-export types from sub-hooks
+export type { Service, CreateServiceRequest, Document, CreateDocumentRequest };
+
 // ============================================================================
 // Hook Interface
 // ============================================================================
 
 interface UseBusinessReturn {
+  // Business state
   business: Business | null;
   knowledgeStats: KnowledgeStats | null;
   lastUpdateResponse: BusinessUpdateResponse | null;
   isLoading: boolean;
   error: string | null;
 
+  // Services (from useServices)
+  services: Service[];
+  servicesLoading: boolean;
+  servicesError: string | null;
+
+  // Documents (from useDocuments)
+  documents: Document[];
+  documentsLoading: boolean;
+  documentsError: string | null;
+
+  // Business methods
   getBusiness: () => Promise<Business>;
   updateBusiness: (updates: BusinessUpdateRequest) => Promise<BusinessUpdateResponse>;
   reindexKnowledge: (force?: boolean) => Promise<ManualReindexResponse>;
   getKnowledgeStats: () => Promise<KnowledgeStats>;
 
+  // Service methods (delegated)
+  getServices: (businessId: string, activeOnly?: boolean, includeInactive?: boolean) => Promise<Service[]>;
+  getService: (serviceId: string) => Promise<Service>;
+  createService: (service: CreateServiceRequest) => Promise<Service>;
+  updateService: (serviceId: string, updates: any) => Promise<Service>;
+  deleteService: (serviceId: string, hardDelete?: boolean) => Promise<any>;
+  bulkCreateServices: (data: any) => Promise<any>;
+  reorderService: (serviceId: string, newOrder: number) => Promise<any>;
+  getServiceDocuments: (serviceId: string, activeOnly?: boolean) => Promise<any>;
+  migrateFromCatalog: (businessId: string) => Promise<any>;
+
+  // Document methods (delegated)
+  getDocuments: (businessId: string) => Promise<Document[]>;
+  createDocument: (document: CreateDocumentRequest) => Promise<Document>;
+  deleteDocument: (documentId: string) => Promise<void>;
+
+  // Onboarding methods
+  completeOnboardingStep: (businessId: string, stepId: string) => Promise<OnboardingCompleteResponse>;
+
+  // Utility methods
   clearError: () => void;
-  refresh: () => Promise<void>;
+  refresh: (businessId?: string) => Promise<void>;
 }
 
 // ============================================================================
@@ -134,7 +182,15 @@ export function useBusinessInfo(): UseBusinessReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clearError = useCallback(() => setError(null), []);
+  // Use the separated hooks
+  const servicesHook = useServices();
+  const documentsHook = useDocuments();
+
+  const clearError = useCallback(() => {
+    setError(null);
+    servicesHook.clearError();
+    documentsHook.clearError();
+  }, [servicesHook, documentsHook]);
 
   const handleError = useCallback((err: any, defaultMessage: string) => {
     const message = err.response?.data?.detail || err.message || defaultMessage;
@@ -144,7 +200,7 @@ export function useBusinessInfo(): UseBusinessReturn {
   }, []);
 
   // ============================================================================
-  // GET Business
+  // Business Methods
   // ============================================================================
 
   const getBusiness = useCallback(async () => {
@@ -164,10 +220,6 @@ export function useBusinessInfo(): UseBusinessReturn {
     }
   }, [handleError]);
 
-  // ============================================================================
-  // UPDATE Business
-  // ============================================================================
-
   const updateBusiness = useCallback(async (updates: BusinessUpdateRequest) => {
     setIsLoading(true);
     setError(null);
@@ -186,10 +238,6 @@ export function useBusinessInfo(): UseBusinessReturn {
       setIsLoading(false);
     }
   }, [handleError]);
-
-  // ============================================================================
-  // REINDEX Knowledge
-  // ============================================================================
 
   const reindexKnowledge = useCallback(async (force = false) => {
     setIsLoading(true);
@@ -212,10 +260,6 @@ export function useBusinessInfo(): UseBusinessReturn {
     }
   }, [handleError]);
 
-  // ============================================================================
-  // GET Knowledge Stats
-  // ============================================================================
-
   const getKnowledgeStats = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -234,28 +278,89 @@ export function useBusinessInfo(): UseBusinessReturn {
   }, [handleError]);
 
   // ============================================================================
-  // Refresh (reload all data)
+  // Onboarding Methods
   // ============================================================================
 
-  const refresh = useCallback(async () => {
-    await Promise.all([
+  const completeOnboardingStep = useCallback(async (businessId: string, stepId: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post(
+        `/dashboard/businesses/${businessId}/onboarding/complete`,
+        { step_id: stepId }
+      );
+      return response.data;
+    } catch (err: any) {
+      handleError(err, 'Failed to complete onboarding step');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleError]);
+
+  // ============================================================================
+  // Utility Methods
+  // ============================================================================
+
+  const refresh = useCallback(async (businessId?: string) => {
+    const promises: Promise<any>[] = [
       getBusiness(),
       getKnowledgeStats(),
-    ]);
-  }, [getBusiness, getKnowledgeStats]);
+    ];
+
+    if (businessId) {
+      promises.push(servicesHook.getServices(businessId));
+      promises.push(documentsHook.getDocuments(businessId));
+    }
+
+    await Promise.all(promises);
+  }, [getBusiness, getKnowledgeStats, servicesHook, documentsHook]);
 
   return {
+    // Business state
     business,
     knowledgeStats,
     lastUpdateResponse,
     isLoading,
     error,
 
+    // Services state (from useServices)
+    services: servicesHook.services,
+    servicesLoading: servicesHook.isLoading,
+    servicesError: servicesHook.error,
+
+    // Documents state (from useDocuments)
+    documents: documentsHook.documents,
+    documentsLoading: documentsHook.isLoading,
+    documentsError: documentsHook.error,
+
+    // Business methods
     getBusiness,
     updateBusiness,
     reindexKnowledge,
     getKnowledgeStats,
 
+    // Service methods (delegated)
+    getServices: servicesHook.getServices,
+    getService: servicesHook.getService,
+    createService: servicesHook.createService,
+    updateService: servicesHook.updateService,
+    deleteService: servicesHook.deleteService,
+    bulkCreateServices: servicesHook.bulkCreateServices,
+    reorderService: servicesHook.reorderService,
+    getServiceDocuments: servicesHook.getServiceDocuments,
+    migrateFromCatalog: servicesHook.migrateFromCatalog,
+
+    // Document methods (delegated)
+    getDocuments: documentsHook.getDocuments,
+    createDocument: documentsHook.createDocument,
+    deleteDocument: documentsHook.deleteDocument,
+
+    // Onboarding methods
+    completeOnboardingStep,
+
+    // Utility methods
     clearError,
     refresh,
   };

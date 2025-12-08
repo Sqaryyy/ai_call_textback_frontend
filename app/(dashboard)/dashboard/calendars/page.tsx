@@ -176,7 +176,7 @@ export default function CalendarPage() {
         `📋 [CALENDAR PAGE] Marking onboarding step complete: ${stepId}`
       );
       await api.post(
-        `/v1/dashboard/businesses/${activeBusiness.id}/onboarding/complete`,
+        `/dashboard/businesses/${activeBusiness.id}/onboarding/complete`,
         {
           step_id: stepId,
         }

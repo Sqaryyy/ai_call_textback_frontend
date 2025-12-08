@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { useBusiness } from "@/hooks/use-business";
-import { useBusinessInfo } from "@/hooks/use-business-info";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useBusinessInfo } from "@/hooks/use-buisiness-info/use-business-info";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,22 +16,30 @@ import {
   AlertCircle,
   FileText,
 } from "lucide-react";
-import { api } from "@/lib/api";
 import ProfileTab from "@/components/business-info/ProfileTab";
 import ServicesTab from "@/components/business-info/ServicesTab";
 import DocumentsTab from "@/components/business-info/DocumentsTab";
 import ContactTab from "@/components/business-info/ContactTab";
-
+import { CreateServiceRequest } from "@/hooks/use-buisiness-info/use-services";
 export default function BusinessSettingsPage() {
   const { activeBusiness } = useBusiness();
   const queryClient = useQueryClient();
   const {
     business,
+    services,
+    documents,
     lastUpdateResponse,
     isLoading,
     error,
     getBusiness,
     updateBusiness,
+    getServices,
+    createService,
+    deleteService,
+    getDocuments,
+    createDocument,
+    deleteDocument,
+    completeOnboardingStep,
     clearError,
   } = useBusinessInfo();
 
@@ -41,8 +49,6 @@ export default function BusinessSettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [services, setServices] = useState<any[]>([]);
-  const [documents, setDocuments] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -62,42 +68,26 @@ export default function BusinessSettingsPage() {
     },
   });
 
-  // Mutation to mark business_info step complete
-  const markBusinessInfoCompleteMutation = useMutation({
-    mutationFn: async () => {
-      const response = await api.post(
-        `/v1/dashboard/businesses/${activeBusiness?.id}/onboarding/complete`,
-        {
-          step_id: "business_info",
-        }
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["onboarding", activeBusiness?.id],
-      });
-    },
-  });
-
-  // Check if business_info step is complete
+  // Check if business_info step is complete (based on SAVED data)
   const isBusinessInfoComplete = () => {
+    if (!business) return false;
     return (
-      formData.name.trim() !== "" &&
-      formData.business_type.trim() !== "" &&
-      formData.contact_info.office_phone.trim() !== ""
+      (business.name || "").trim() !== "" &&
+      (business.business_type || "").trim() !== "" &&
+      (business.contact_info?.office_phone || "").trim() !== ""
     );
   };
 
-  // Check if business_knowledge step is complete
+  // Check if business_knowledge step is complete (based on SAVED data)
   const isBusinessKnowledgeComplete = () => {
+    if (!business) return false;
     return (
       services.length > 0 &&
       documents.length > 0 &&
-      formData.business_profile.description.trim() !== "" &&
-      (formData.contact_info.email.trim() !== "" ||
-        formData.contact_info.office_phone.trim() !== "" ||
-        formData.contact_info.address.trim() !== "")
+      (business.business_profile?.description || "").trim() !== "" &&
+      ((business.contact_info?.email || "").trim() !== "" ||
+        (business.contact_info?.office_phone || "").trim() !== "" ||
+        (business.contact_info?.address || "").trim() !== "")
     );
   };
 
@@ -109,8 +99,8 @@ export default function BusinessSettingsPage() {
   useEffect(() => {
     if (activeBusiness) {
       getBusiness();
-      loadServices();
-      loadDocuments();
+      getServices(activeBusiness.id);
+      getDocuments(activeBusiness.id);
     }
   }, [activeBusiness]);
 
@@ -144,6 +134,8 @@ export default function BusinessSettingsPage() {
   }, [showSuccessMessage]);
 
   const handleSave = async () => {
+    if (!activeBusiness?.id) return;
+
     setIsSaving(true);
     setShowSuccessMessage(false);
 
@@ -154,13 +146,16 @@ export default function BusinessSettingsPage() {
 
       // Mark steps as complete based on what's filled out
       if (isBusinessInfoComplete()) {
-        await markBusinessInfoCompleteMutation.mutateAsync();
+        await completeOnboardingStep(activeBusiness.id, "business_info");
+        queryClient.invalidateQueries({
+          queryKey: ["onboarding", activeBusiness.id],
+        });
       }
 
       if (isBusinessKnowledgeComplete()) {
         // Refetch onboarding status to update checklist
         await queryClient.invalidateQueries({
-          queryKey: ["onboarding", activeBusiness?.id],
+          queryKey: ["onboarding", activeBusiness.id],
         });
       }
     } catch (err) {
@@ -189,41 +184,15 @@ export default function BusinessSettingsPage() {
     setHasChanges(true);
   };
 
-  const loadServices = async () => {
-    try {
-      const response = await api.get(
-        `/v1/dashboard/services/business/${activeBusiness?.id}`
-      );
-      setServices(response.data.services || response.data || []);
-    } catch (err) {
-      console.error("Failed to load services:", err);
-    }
-  };
-
-  const handleCreateService = async (newService: {
-    name: string;
-    description: string;
-    price: string;
-    price_display: string;
-    duration: string;
-  }) => {
+  const handleCreateService = async (newService: CreateServiceRequest) => {
     if (!newService.name.trim() || !activeBusiness?.id) return;
 
     try {
-      await api.post("/v1/dashboard/services/", {
-        business_id: activeBusiness.id,
-        name: newService.name,
-        description: newService.description,
-        price: newService.price ? parseFloat(newService.price) : null,
-        price_display: newService.price_display,
-        duration: newService.duration ? parseInt(newService.duration) : null,
-        display_order: services.length,
-      });
-      await loadServices();
+      await createService(newService);
 
       // Refetch onboarding status
       queryClient.invalidateQueries({
-        queryKey: ["onboarding", activeBusiness?.id],
+        queryKey: ["onboarding", activeBusiness.id],
       });
     } catch (err) {
       console.error("Failed to create service:", err);
@@ -232,27 +201,17 @@ export default function BusinessSettingsPage() {
 
   const handleDeleteService = async (serviceId: string) => {
     if (!confirm("Are you sure you want to delete this service?")) return;
+    if (!activeBusiness?.id) return;
 
     try {
-      await api.delete(`/v1/dashboard/services/${serviceId}`);
-      await loadServices();
+      await deleteService(serviceId);
+
       // Refetch onboarding status
       queryClient.invalidateQueries({
-        queryKey: ["onboarding", activeBusiness?.id],
+        queryKey: ["onboarding", activeBusiness.id],
       });
     } catch (err) {
       console.error("Failed to delete service:", err);
-    }
-  };
-
-  const loadDocuments = async () => {
-    try {
-      const response = await api.get(
-        `/v1/dashboard/documents/business/${activeBusiness?.id}`
-      );
-      setDocuments(response.data.documents || response.data || []);
-    } catch (err) {
-      console.error("Failed to load documents:", err);
     }
   };
 
@@ -269,18 +228,17 @@ export default function BusinessSettingsPage() {
       return;
 
     try {
-      await api.post("/v1/dashboard/documents/", {
+      await createDocument({
         business_id: activeBusiness.id,
         title: newDocument.title,
         type: newDocument.doc_type,
         content: newDocument.content,
         related_service_id: null,
       });
-      await loadDocuments();
 
       // Refetch onboarding status
       queryClient.invalidateQueries({
-        queryKey: ["onboarding", activeBusiness?.id],
+        queryKey: ["onboarding", activeBusiness.id],
       });
     } catch (err) {
       console.error("Failed to create document:", err);
@@ -289,13 +247,14 @@ export default function BusinessSettingsPage() {
 
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
+    if (!activeBusiness?.id) return;
 
     try {
-      await api.delete(`/v1/dashboard/documents/${docId}`);
-      await loadDocuments();
+      await deleteDocument(docId);
+
       // Refetch onboarding status
       queryClient.invalidateQueries({
-        queryKey: ["onboarding", activeBusiness?.id],
+        queryKey: ["onboarding", activeBusiness.id],
       });
     } catch (err) {
       console.error("Failed to delete document:", err);
@@ -403,7 +362,7 @@ export default function BusinessSettingsPage() {
       )}
 
       {/* Completion Requirements Info - Only hide after successful save */}
-      {!isFullyComplete() || hasChanges ? (
+      {!isFullyComplete() && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
@@ -420,19 +379,21 @@ export default function BusinessSettingsPage() {
                         Basic Information:
                       </p>
                       <ul className="text-blue-700 text-sm space-y-1 ml-4">
-                        {!formData.name.trim() && (
+                        {!(business?.name || "").trim() && (
                           <li className="flex items-center gap-2">
                             <XCircle className="h-3 w-3" />
                             Add business name
                           </li>
                         )}
-                        {!formData.business_type.trim() && (
+                        {!(business?.business_type || "").trim() && (
                           <li className="flex items-center gap-2">
                             <XCircle className="h-3 w-3" />
                             Add business type
                           </li>
                         )}
-                        {!formData.contact_info.office_phone.trim() && (
+                        {!(
+                          business?.contact_info?.office_phone || ""
+                        ).trim() && (
                           <li className="flex items-center gap-2">
                             <XCircle className="h-3 w-3" />
                             Add phone number
@@ -461,15 +422,19 @@ export default function BusinessSettingsPage() {
                             Add at least one document
                           </li>
                         )}
-                        {!formData.business_profile.description.trim() && (
+                        {!(
+                          business?.business_profile?.description || ""
+                        ).trim() && (
                           <li className="flex items-center gap-2">
                             <XCircle className="h-3 w-3" />
                             Add a business description
                           </li>
                         )}
-                        {!formData.contact_info.email.trim() &&
-                          !formData.contact_info.office_phone.trim() &&
-                          !formData.contact_info.address.trim() && (
+                        {!(business?.contact_info?.email || "").trim() &&
+                          !(
+                            business?.contact_info?.office_phone || ""
+                          ).trim() &&
+                          !(business?.contact_info?.address || "").trim() && (
                             <li className="flex items-center gap-2">
                               <XCircle className="h-3 w-3" />
                               Add at least one contact method
@@ -483,7 +448,7 @@ export default function BusinessSettingsPage() {
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      )}
 
       {/* Error Message */}
       {error && (
@@ -544,6 +509,7 @@ export default function BusinessSettingsPage() {
 
       {activeTab === "services" && (
         <ServicesTab
+          businessId={activeBusiness.id}
           services={services}
           onCreateService={handleCreateService}
           onDeleteService={handleDeleteService}

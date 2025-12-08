@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "../PhoneInput";
 import { Mail, Phone, Globe, MapPin } from "lucide-react";
 
 interface ContactTabProps {
@@ -51,17 +52,14 @@ export default function ContactTab({
                 Office Phone
               </div>
             </label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={formData.contact_info.office_phone}
-              onChange={(e) =>
-                updateNestedField(
-                  "contact_info",
-                  "office_phone",
-                  e.target.value
-                )
+              onChange={(value) =>
+                updateNestedField("contact_info", "office_phone", value || "")
               }
-              placeholder="(555) 123-4567"
+              placeholder="Enter phone number"
+              defaultCountry="US"
+              international
             />
           </div>
 
@@ -72,17 +70,14 @@ export default function ContactTab({
                 Emergency Line
               </div>
             </label>
-            <Input
-              type="tel"
+            <PhoneInput
               value={formData.contact_info.emergency_line}
-              onChange={(e) =>
-                updateNestedField(
-                  "contact_info",
-                  "emergency_line",
-                  e.target.value
-                )
+              onChange={(value) =>
+                updateNestedField("contact_info", "emergency_line", value || "")
               }
-              placeholder="(555) 999-9999"
+              placeholder="Enter emergency phone"
+              defaultCountry="US"
+              international
             />
           </div>
 
